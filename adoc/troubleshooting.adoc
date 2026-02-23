@@ -1,0 +1,13 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-troubleshooting]
+== Troubleshooting
+:revdate: 2026-02-23
+:page-revdate: {revdate}
+
+This section provides solutions to problems that you may encounter when deploying or using {productname}.
+
+[.qanda]
+I am encountering the `401 unauthorized` error when trying to install {productname}::
+  To install and use {productname}, you need to obtain a valid subscription as s one of its prerequisites.
+  Refer to xref:pr-deployment-prerequisites[] for their complete list.

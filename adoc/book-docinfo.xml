@@ -37,6 +37,7 @@
 </meta>
 <meta name="category"><phrase>Systems Management</phrase></meta>
 <!-- Docmanager -->
+ <!--
 <dm:docmanager xmlns:dm="urn:x-suse:ns:docmanager">
   <dm:bugtracker>
     <dm:url>https://bugzilla.suse.com/enter_bug.cgi</dm:url>
@@ -46,6 +47,7 @@
   </dm:bugtracker>
   <dm:translation>no</dm:translation>
 </dm:docmanager>
+-->
 <!-- Social Media -->
 <meta name="title" its:translate="yes"
       xmlns:its="http://www.w3.org/2005/11/its">Getting Started with {productname}</meta>

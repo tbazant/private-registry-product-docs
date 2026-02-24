@@ -12,4 +12,5 @@ I am encountering the `401 unauthorized` error when trying to install {productna
   To install and use {productname}, you need the following:
   * A qualifying subscription that includes this product, such as a {ranchera} Suite subscription or a {productname} Add-on subscription.
     If you do not have a qualifying subscription, contact your {suse} representative.
-  * To log in to {sregistry} with {helm} using the {scca} mirroring credentials of the {scca} organization which has the subscription.
+  * Log in to {sregistry} with {helm} using the {scca} mirroring credentials of the {scca} organization which holds the subscription.
+    Refer to xref:pr-deployment-kube-secrets[] for more details.

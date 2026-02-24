@@ -9,5 +9,7 @@ This section provides solutions to problems that you may encounter when deployin
 
 [.qanda]
 I am encountering the `401 unauthorized` error when trying to install {productname}::
-  To install and use {productname}, you need to obtain a valid subscription as s one of its prerequisites.
-  Refer to xref:pr-deployment-prerequisites[] for their complete list.
+  To install and use {productname}, you need the following:
+  * A qualifying subscription that includes this product, such as a {ranchera} Suite subscription or a {productname} Add-on subscription.
+    If you do not have a qualifying subscription, contact your {suse} representative.
+  * To log in to {sregistry} with {helm} using the {scca} mirroring credentials of the {scca} organization which has the subscription.

@@ -1,0 +1,55 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-introduction]
+== Introducción
+:revdate: 2025-09-01
+:page-revdate: {revdate}
+
+[#pr-what-is-spr]
+=== ¿Qué es {productname}?
+{productname} ({productnameshort}) es un registro de contenedores in situ.
+{productnameshort} está diseñado para clientes {suse} que necesitan un registro de contenedores que funcione bien con otros servicios y productos {suse}.
+
+[#pr-what-are-pr-benefits]
+=== ¿Cuáles son los beneficios de {productname}?
+{productnameshort} se basa en el proyecto {harbor} e incluye todas sus características principales, así como beneficios adicionales. Por ejemplo:
+
+* *Registro de contenedores in situ.* {productnameshort} es un registro de contenedores alojado localmente con acceso a servicios de registro {suse} en línea.
+* *Seguridad.* {productnameshort} ofrece consideraciones de seguridad para entornos en contenedores.
+Incluye autenticación, autorización y escaneo de vulnerabilidades.
+* *Flexibilidad en el despliegue.* Puedes instalar {productnameshort} en un entorno {kube} como {rke2}.
+También puedes desplegar {productnameshort} con una configuración de alta disponibilidad.
+* *Gestión de usuarios.* {productnameshort} proporciona un mecanismo de autenticación y autorización con control de acceso basado en funciones (RBAC).
+* *Interfaz de usuario.* Además de una interfaz de línea de comandos, puedes administrar {productnameshort} a través de la interfaz de usuario web.
+
+[#pr-how-does-pr-work]
+=== ¿Cómo funciona {productname}?
+{productnameshort} se entrega como contenedores _Iniciativa de Contenedor Abierto_ (OCI) y se espera que se despliegue en un clúster {kube}.
+{productnameshort} consiste en los siguientes contenedores:
+
+* **harbor-core:** el componente principal del registro {harbor}, responsable de manejar funcionalidades centrales como la gestión de proyectos, repositorios e interacciones de usuarios.
+* **harbor-db:** el contenedor de base de datos que almacena todos los metadatos relacionados con imágenes, usuarios y configuraciones para el registro {harbor}.
+* **harbor-jobservice:** un servicio que gestiona trabajos en segundo plano, como la replicación de imágenes y tareas programadas, asegurando un procesamiento eficiente de las operaciones dentro del registro.
+* **harbor-nginx:** el proxy inverso y equilibrador de carga que dirige las solicitudes entrantes a los servicios {harbor} apropiados, proporcionando un único punto de entrada para los usuarios.
+* **harbor-portal:** la interfaz de usuario basada en web que permite a los usuarios interactuar con el registro {harbor}, gestionar imágenes y configurar ajustes a través de una interfaz gráfica.
+* **harbor-registry:** el contenedor que sirve como el sistema secundario de almacenamiento de imágenes, manejando el almacenamiento y la recuperación de imágenes de contenedores.
+* **harbor-registryctl:** una herramienta de línea de comandos para gestionar el registro {harbor}, permitiendo a los usuarios realizar tareas administrativas y configuraciones directamente desde la terminal.
+* **harbor-trivy-adapter:** un contenedor que integra el escáner de vulnerabilidades {trivy} con {harbor}, permitiendo el escaneo de seguridad automatizado de imágenes de contenedores en busca de vulnerabilidades.
+* **harbor-exporter:** el contenedor que exporta métricas {harbor} en un formato que puede ser recogido por {prometheus} para monitoreo y observabilidad.
+* **harbor-valkey:** un almacén de clave-valor en memoria.
+
+Después del despliegue, puedes iniciar sesión a través de la interfaz de usuario web.
+Tras una autenticación y autorización exitosas, puedes configurar múltiples aspectos del producto, por ejemplo:
+
+* Configura *configuración global*, como establecer el registro en modo de solo lectura o restringir quién puede crear proyectos.
+* Selecciona un *método de autenticación*.
+* Añade usuarios cuando estés en modo de autenticación de base de datos y asigna el *rol de administrador del sistema* a otros usuarios.
+* Aplica *cuotas* de recursos a los proyectos.
+* Configura la *replicación* de imágenes entre instancias {productnameshort}.
+
+[#pr-for-more-information]
+=== Información adicional
+Consulta las siguientes fuentes para obtener más detalles:
+
+* La página de inicio del proyecto {harbor} está en https://goharbor.io/.
+* El uso de {harbor} se detalla en https://goharbor.io/docs.

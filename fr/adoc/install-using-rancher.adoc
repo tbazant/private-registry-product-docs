@@ -1,0 +1,59 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-install-rancher]
+== Installation à l'aide de l'interface utilisateur {ranchera}
+
+:revdate: 2026-05-05
+:page-revdate: {revdate}
+
+Pour installer {productname} en utilisant l'interface utilisateur {ranchera}, vous devez répondre aux exigences suivantes et suivre les étapes ci-dessous.
+
+[#pr-install-rancher-requirements]
+=== Quelles exigences dois-je respecter{nbsp}?
+
+* Un environnement avec un ou plusieurs clusters {kube} en cours d'exécution et supportés, et {ranchera} déployé.
+Reportez-vous aux link:https://documentation.suse.com/cloudnative/rancher-manager/latest/en/installation-and-upgrade/requirements/requirements.html[{ranchera}exigences d'installation] pour plus de détails.
+* Identifiants {sregistry} pour un compte avec un abonnement {productname} (un nom d'utilisateur et un mot de passe/token).
+Reportez-vous à link:https://documentation.suse.com/en-us/cloudnative/suse-private-registry/html/private-registry/pr-deployment.html#pr-deployment-kube-secrets[Obtenir les {kube} secrets de {scca}] pour plus de détails.
+
+
+[#pr-install-rancher-procedure]
+=== Quelles sont les étapes pour installer {productname} en utilisant l'interface utilisateur {ranchera}{nbsp}?
+
+.*ÉTAPE 1*{nbsp}: Indiquez à {ranchera} où se trouve le dépôt {productname} pour rechercher le chart d'installation.
+. Connectez-vous à {ranchera}.
+. Cliquez sur le menu trois lignes (☰) dans le coin supérieur gauche, sélectionnez menu:Gestion des clusters[], et cliquez sur le nom de votre cluster, généralement `local`.
+. Dans le menu de gauche, sélectionnez menu:Applis[Dépôts].
+. Cliquez sur le bouton btn:[Créer] en haut à droite et complétez le formulaire qui s'ouvre{nbsp}:
+  .. *Cible*{nbsp}: Sélectionnez btn:[Dépôt OCI].
+  .. *Nom*{nbsp}: Entrez un nom pour le dépôt, tel que `SUSE Private Registry`.
+  .. *Description*{nbsp}: Optionnellement, ajoutez une description du dépôt.
+  .. *URL d'hôte du dépôt OCI*{nbsp}: Enter \`oci://registry.suse.com/private-registry/private-registry-helm`.
+  .. *Authentification*{nbsp}: Changez en `Create an HTTP Basic Auth Secret` et entrez le nom d'utilisateur et le mot de passe des identifiants du registre.
+. Confirmez avec btn:[Créer].
+
+.Ajout d'un dépôt {productname}
+image::spr-rancher-add-repo.png[Une capture d'écran montrant comment ajouter un dépôt {productname} à {ranchera}, width=100%]
+
+.*ÉTAPE 2*{nbsp}: Créez un secret pour accéder aux images dans le \`registry.suse.com`.
+. Cliquez sur le menu trois lignes (☰) dans le coin supérieur gauche et sélectionnez menu:Gestion des clusters[].
+. Basculez vers le cluster auquel vous souhaitez ajouter le secret et cliquez sur btn:[Explorer].
+. Pour naviguer vers la gestion des secrets, sélectionnez menu:Stockage[Secrets] et cliquez sur btn:[Créer] en haut à droite.
+. Sélectionnez le secret btn:[HTTP Basic Auth] puis l'espace de noms `private-registry`.
+. Entrez `suse-registry` comme nom pour le secret.
+. Remplissez les champs `username` et `password` avec les identifiants {suse} obtenus dans xref:pr-install-rancher-requirements[].
+
+.Ajout de secrets {productname}
+image::spr-rancher-add-secrets.png[Une capture d'écran montrant comment ajouter des secrets {productname} à {ranchera}, width=100%]
+
+.*ÉTAPE 3*{nbsp}: Installez le {helm} chart.
+. Dans le menu principal à gauche, sélectionnez menu:Applis[Charts].
+. Entrez le nom du dépôt {productname} assigné dans la zone de recherche. Par exemple : `SUSE Private Registry`.
+Si cela n'apparaît pas dans la liste, cliquez sur btn:[Actualiser tous les dépôts].
+. Cliquez sur le chart et consultez le `README.md`.
+. Vous pouvez personnaliser les valeurs d'installation si vous le souhaitez.
+Cliquez soit sur les sections à gauche du panneau `Edit Options` pour voir toutes les valeurs que vous pouvez configurer, soit modifiez les valeurs directement dans le fichier YAML du chart.
+. Dans le coin supérieur droit, cliquez sur btn:[Installer cette version].
+
+.Installation {productname}
+image::spr-rancher-install.png[Une capture d'écran montrant l'écran d'installation de {productname} dans {ranchera}, width=100%]

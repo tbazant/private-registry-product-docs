@@ -1,0 +1,142 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-faq]
+== ホットスポットに関する一般的な質問とその回答 (FAQ)
+
+:revdate: 2026-05-28
+:page-revdate: {revdate}
+
+[#product-overview-and-differentiators]
+=== 製品の概要と差別化要因
+
+[.qanda]
+顧客は{productname}のためにどのようなサブスクリプションが必要ですか？::
+これは{ranchera}スイートに含まれており、{ranchera}プライムのアドオンとして提供されています。
++
+アドオンの価格は他のアドオンと同じです。
+
+{harbor}（アプリケーションコレクションまたはアップストリームから）の差別化要因は何ですか？::
+必要な場合は{productname}を使用してください：
+* 製品の問題に対するレベル3（L3）サポート。
+* 予測可能なリリースサイクル。
+* 既知の脆弱性に対するパッチ適用済みイメージ。アップストリームの{harbor}イメージは{dhub}からのもので、しばしばlink:https://artifacthub.io/packages/helm/harbor/harbor?modal=security-report[多数の未パッチの脆弱性]を含んでいます。
++
+時間が経つにつれて、{suse}は{ranchera}との標準で用意されている統合を追加し、顧客からの機能リクエストを優先していきます。
+
+顧客は{ranchera}プライムのサブスクリプションと同じ数のアドオン{productname}サブスクリプションを購入する必要がありますか？::
+はい、{suse}セキュリティなどの他のアドオンと同様です。{productname}サブスクリプションモデルの追加の利点は、顧客が必要なだけのデプロイメントを実行できることです。
+
+[#relationship-with-upstream-harbor]
+=== アップストリームの{harbor}との関係
+
+[.qanda]
+リリースサイクルはアップストリームの{harbor}とどのように一致しますか？::
+{productname}のリリースサイクルはアップストリームの{harbor}のリリースサイクルとは独立しています。
++
+{productname}の新しいバージョンをリリースする際、{suse}はSUSEの品質保証およびメンテナンス要件を満たすアップストリームの{harbor}プロジェクトの最新バージョンを含めることを目指しています。
+
+他のソースから{harbor}を実行している顧客のために移行に関する考慮事項を公開しますか？::
+現在はありません。
+
+[#deployment-and-installation]
+=== デプロイメントとインストール
+
+[.qanda]
+{compose}を介して{productname}のインストールをサポートしていますか？::
+いいえ。{helm}チャートを使用して{productname}をインストールおよび構成する必要があります。このチャートは、継続的な管理（Day 2オペレーション）にも使用され、GitOpsワークフローと統合できます。
+
+ローカル（{ranchera}マネージャー）クラスターへのデプロイメントを推奨しますか？::
+いいえ。SUSEは、ダウンストリームクラスターに{productname}をデプロイすることを推奨しています。これにより、イメージを消費する必要がある他のダウンストリームクラスターがレジストリにアクセスできるようになります。
+
+高可用性（HA）環境のためのデプロイメントのベストプラクティスは何ですか？::
+HAの場合、リソースの競合を避けるために、{ranchera}マネジメントクラスターに{productname}をデプロイしないでください。
++
+{productname}を専用クラスターにデプロイするか、またはアプリケーションクラスターの1つ以上にデプロイすることができます。
++
+手順については、xref:pr-deployment-ha[]を参照してください。Postgresデータベース、ValkeyまたはRedisサーバー、および{ingress}コントローラーのHAコンポーネントを自分で提供する必要があることに注意してください。これらのコンポーネントは{productname} {helm}チャートによってデプロイされず、{suse}によってサポートされていません。
+
+// Will there be guidance for Edge deployments?::
+// TBD.
+
+{productname} {helm}チャートは最終的にアプリケーションコレクションに追加される予定ですか？::
+はい、SUSEは将来的にそこにチャートを公開する計画です。
+
+{kube}オペレーターを出荷していますか？::
+{productname}は専用のオペレーターを出荷していません。それはその{helm}チャートを使用してインストールおよび管理され、GitOpsと統合できます。{suse}は将来のリリースのためにオペレーターに基づく管理を引き続き評価しています。
+
+[#security-scanning-and-signing]
+=== セキュリティ、スキャンおよび署名
+
+[.qanda]
+{productname}の中に署名ツールを統合していますか？::
+{productname}は画像に署名することはできませんが、Open Container Initiative (OCI) 互換の署名を保存、配布、検証することができます。
++
+広く使用されているツールは`cosign`で、画像に署名し、署名を{productname}に保存することができます。
++
+画像に添付された`cosign`の署名は、{productname}ポータルから表示およびダウンロードできます。
+
+デプロイメントプロセス中にNotaryまたはCosignを使用して画像に署名することは可能ですか？::
+{productname}は`cosign`の署名を保存、配布、検証することができます。
++
+{productname}自体は画像に署名しません。画像はビルドプロセス中に署名し、その後、画像と一緒に署名をレジストリにアップロードする必要があります。
++
+Notaryは{productname}に含まれておらず、サポートされていません。
+
+画像はTrivyのみでCommon Vulnerabilities and Exposures (CVEs)のスキャンが行われますか、それとも{suse} Security (NeuVector)も使用できますか？::
+画像は、標準で付属しているTrivyでスキャンされます。{suse} Securityは、Trivyの追加または置き換えとして追加できます。
+
+ClamAVや同様のマルウェアスキャンを実行することは可能ですか？::
+デフォルトでは、{productname}はTrivyを使用して画像をスキャンします。{suse} Security (NeuVector)をスキャナーとして構成することもできます。
+
+プルスルーキャッシュシナリオでは、脆弱性基準は適用されますか？::
+はい、ただし既知の制限があります。アップストリームの{harbor} link:https://github.com/goharbor/harbor/issues/16218[問題]のため、スキャンが完了していないため、画像の最初のプル時には脆弱性基準は適用されません。
++
+完全なカバレッジのために、{productname}を{suse} Security link:https://open-docs.neuvector.com/policy/admission#admission-control-criteria[アドミッションコントロール]と組み合わせてください。
+
+{productname}のコンテナイメージは強化されていますか？::
+はい。{productname}のコンテナイメージは強化されています。それらはSUSE Linux Enterprise Base Container Images (SLE BCI)に基づいており、SUSE Linux Enterpriseに使用される同じエンタープライズグレードのSUSE Build Serviceで構築されています。これにより、安全なサプライチェーンが確保されます。イメージは署名されており、SUSEはSupply-chain Levels for Software Artifacts (SLSA)のアテステーションを公開しています。
+
+{productname}のイメージは署名されていますか？具体的には、::
+イメージは`cosign`で署名されています。link:https://www.suse.com/support/kb/doc/?id=000021411[KB 000021411]で公開されたPEM形式の署名キーを保存することで、それらを検証できます。
++
+次に、例えば次のように実行します：
++
+[source,bash]
+----
+cosign verify --key container-key.pem registry.suse.com/private-registry/harbor-portal:latest
+----
+
+[#replication-and-sync]
+=== レプリケーションとsync
+
+[.qanda]
+{sregistry}と{sappco}を同期するためのプラグインの計画はありますか？::
+はい、そのような機能が計画されています。
+
+// When replicating from {sappco}, are SBOMs also replicated?::
+// TBD.
+
+{productname}はマルチサイトレプリケーションを提供していますか？::
+はい。{productname}はマルチサイトのポリシーベースのイメージレプリケーション（プルとプッシュ）をサポートしています。各レジストリを独立させたまま、複数の{productname}デプロイメント間でイメージを同期できます。
+
+[#features-and-integration-with-ranchera]
+=== {ranchera}との機能と統合
+
+[.qanda]
+{ranchera}内でレジストリを拡張機能を使用して統合する計画はありますか？::
+はい。{suse}は{ranchera} Primeやその他の提供物とのより深い統合を計画しています。今後検討されている強化には、シングルサインオン（SSO）統合、{ssecurity}スキャナーの簡素化されたセットアップ、アプリケーションコレクションのミラーリング、{sobservability}による監視、{ranchera} UI拡張が含まれます。
+
+{suse}はトレーニングカタログにレジストリを追加しますか？::
+これはまだ計画されていません。トレーニング資料に興味がある場合は、トレーニングチームと可能性について話し合うために{suse}に連絡してください。
+
+[#support-and-documentation]
+=== サポートとドキュメント
+
+[.qanda]
+{productname}に対するサポートポリシーはありますか？::
+はい。{productname}のサポートポリシーは、他の{ranchera}プライムアドオンと同じです。
+
+{productname}のドキュメントに情報が不足している場合、公式の{harbor}ドキュメントを参照してもよいですか？::
+はい。{productname}は{harbor}に基づいているため、公式の{harbor}ドキュメントは有用なリソースです。SUSEバージョンに特有の機能については、{productname}ドキュメントを参照してください。
++
+xref:pr-relnotes[]は、あなたの{harbor}バージョンに対応するアップストリームの{productname}バージョンを指定します。

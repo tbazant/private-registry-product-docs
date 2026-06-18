@@ -1,0 +1,142 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-faq]
+== Questions fréquemment posées
+
+:revdate: 2026-05-28
+:page-revdate: {revdate}
+
+[#product-overview-and-differentiators]
+=== Aperçu du produit et différenciateurs
+
+[.qanda]
+Quel type d'abonnement les clients ont-ils besoin pour {productname} ?::
+Il est inclus dans {ranchera} la suite et proposé en tant que produit complémentaire pour {ranchera} Prime.
++
+Le prix du produit complémentaire est le même que celui des autres produits complémentaires.
+
+Quels sont les différenciateurs avec {harbor} (de la Collection d'Applications ou en amont) ?::
+Utilisez {productname} si vous avez besoin{nbsp}:
+* Support de niveau 3 (L3) pour les problèmes de produit.
+* Un cycle de publication prévisible.
+* Images corrigées pour les vulnérabilités connues. Les images {harbor} en amont de {dhub} contiennent souvent link:https://artifacthub.io/packages/helm/harbor/harbor?modal=security-report[de nombreuses vulnérabilités non corrigées].
++
+Au fil du temps, {suse} ajoutera également des intégrations prêtes à l'emploi avec {ranchera} et priorisera les demandes de fonctionnalités des clients.
+
+Les clients doivent-ils acheter le même nombre d'abonnements au produit complémentaire {productname} que d'abonnements {ranchera} Prime ?::
+Oui, tout comme d'autres produits complémentaires tels que {suse} Sécurité. Un avantage supplémentaire du modèle d'abonnement {productname} est qu'il permet aux clients d'exécuter autant de déploiements qu'ils le souhaitent.
+
+[#relationship-with-upstream-harbor]
+=== Relation avec {harbor} en amont
+
+[.qanda]
+Comment le cycle de publication s'aligne-t-il avec {harbor} en amont ?::
+Le cycle de publication de {productname} est indépendant du cycle de publication de {harbor} en amont.
++
+Lors de la publication de nouvelles versions de {productname}, {suse} vise à inclure la dernière version du projet {harbor} en amont qui répond aux exigences d'assurance qualité et de maintenance de SUSE.
+
+Allez-vous publier des considérations de migration pour les clients exécutant {harbor} à partir d'autres sources ?::
+Pas pour le moment.
+
+[#deployment-and-installation]
+=== Déploiement et installation
+
+[.qanda]
+Supportez-vous l'installation de {productname} via {compose} ?::
+Non. Vous devez installer et configurer {productname} en utilisant son tableau {helm}. Ce tableau est également utilisé pour la gestion continue (opérations du jour 2) et peut être intégré aux flux de travail GitOps.
+
+Recommandez-vous des déploiements sur le cluster local ({ranchera} Manager) ?::
+Non. SUSE recommande de déployer {productname} sur un cluster en aval. Cela rend le registre accessible à d'autres clusters en aval qui ont besoin de consommer des images.
+
+Quelles sont les meilleures pratiques de déploiement pour un environnement à haute disponibilité (HA) ?::
+Pour HA, ne déployez pas {productname} sur {ranchera} le cluster de gestion pour éviter la contention des ressources.
++
+Vous pouvez déployer {productname} sur un cluster dédié, ou sur un ou plusieurs de vos clusters d'application.
++
+Pour obtenir des instructions, reportez-vous à xref:pr-deployment-ha[]. Notez que vous devez fournir vos propres composants HA pour la base de données Postgres, le serveur Valkey ou Redis, et le contrôleur {ingress}. Ces composants ne sont pas déployés par le tableau {productname} {helm} et ne sont pas supportés par {suse}.
+
+// Will there be guidance for Edge deployments?::
+// TBD.
+
+Le tableau {productname} {helm} sera-t-il ajouté à la Collection d'Applications à l'avenir ?::
+Oui, SUSE prévoit de publier le tableau là-bas à l'avenir.
+
+Expédiez-vous un opérateur {kube} ?::
+{productname} n'est pas livré avec un opérateur dédié. Il est installé et géré en utilisant son tableau {helm}, qui peut être intégré avec GitOps. {suse} continue d'évaluer la gestion basée sur des opérateurs pour les futures versions.
+
+[#security-scanning-and-signing]
+=== Sécurité, analyse et signature
+
+[.qanda]
+Intégrez-vous un outil de signature dans {productname} ?::
+{productname} ne signe pas les images lui-même, mais il peut stocker, distribuer et vérifier les signatures compatibles avec l'Open Container Initiative (OCI).
++
+Un outil largement utilisé est `cosign`, qui peut signer des images et stocker les signatures dans {productname}.
++
+Les signatures de `cosign` attachées aux images sont consultables et téléchargeables depuis le portail {productname}.
+
+Est-il possible de signer des images avec Notary ou Cosign pour approbation lors du processus de déploiement ?::
+{productname} peut stocker, distribuer et vérifier les signatures `cosign`.
++
+{productname} lui-même ne signe pas les images. Vous devez signer les images pendant leur processus de construction, puis télécharger la signature dans le registre avec l'image.
++
+Notary n'est pas inclus ni supporté avec {productname}.
+
+Les images sont-elles scannées pour les vulnérabilités et les expositions communes (CVE) uniquement avec Trivy, ou peut-on également utiliser {suse} Security (NeuVector) ?::
+Les images sont scannées avec Trivy, qui est prêt à l'emploi. {suse} Security peut être ajouté en plus ou en remplacement de Trivy.
+
+Est-il possible d'exécuter ClamAV ou des analyses de logiciels malveillants similaires ?::
+Par défaut, {productname} scanne les images en utilisant Trivy. Vous pouvez également configurer {suse} Security (NeuVector) comme scanner.
+
+Dans le scénario de cache de pull-through, les critères de vulnérabilité seront-ils appliqués ?::
+Oui, mais avec une limitation connue. En raison des {harbor} link:https://github.com/goharbor/harbor/issues/16218[problèmes] en amont, les critères de vulnérabilité ne sont pas appliqués lors du premier pull d'une image car le scan n'est pas encore terminé.
++
+Pour une couverture complète, associez {productname} avec {suse} Security link:https://open-docs.neuvector.com/policy/admission#admission-control-criteria[contrôles d'admission].
+
+Les images de {productname} sont-elles durcies ?::
+Oui. Les images de conteneur pour {productname} sont durcies. Elles sont basées sur SUSE Linux Enterprise Base Container Images (SLE BCI) et construites avec le même SUSE Build Service de niveau entreprise utilisé pour SUSE Linux Enterprise. Cela garantit une chaîne d'approvisionnement sécurisée. Les images sont également signées, et SUSE publie leurs attestations de niveaux de chaîne d'approvisionnement pour les artefacts logiciels (SLSA).
+
+Les images de {productname} sont-elles signées{nbsp}? Comment ?::
+Les images sont signées avec `cosign`. Vous pouvez les vérifier en sauvegardant la clé de signature au format PEM publiée à link:https://www.suse.com/support/kb/doc/?id=000021411[KB 000021411].
++
+Ensuite, exécutez, par exemple{nbsp}:
++
+[source,bash]
+----
+cosign verify --key container-key.pem registry.suse.com/private-registry/harbor-portal:latest
+----
+
+[#replication-and-sync]
+=== Réplication et synchronisation
+
+[.qanda]
+Y a-t-il un plan pour un plug-in pour synchroniser avec {sregistry} et {sappco} ?::
+Oui, une telle fonctionnalité est prévue.
+
+// When replicating from {sappco}, are SBOMs also replicated?::
+// TBD.
+
+{productname} propose-t-il une réplication multi-sites ?::
+Oui. {productname} prend en charge la réplication d'images multi-sites basée sur des stratégies (pull et push). Vous pouvez synchroniser des images à travers plusieurs déploiements de {productname} tout en gardant chaque registre indépendant.
+
+[#features-and-integration-with-ranchera]
+=== Fonctionnalités et intégration avec {ranchera}
+
+[.qanda]
+Y a-t-il un plan pour intégrer le Registre au sein de {ranchera} en utilisant une Extension ?::
+Oui. {suse} prévoit une intégration plus approfondie avec {ranchera} Prime et d'autres offres. Les améliorations futures envisagées incluent l'intégration de l'authentification unique (SSO), une configuration simplifiée pour les scanners {ssecurity} et le miroir de la Collection d'Applications, la surveillance avec {sobservability}, et une extension de l'interface utilisateur {ranchera}.
+
+{suse} ajoutera-t-il le Registre au Catalogue de Formation ?::
+Cela n'est pas encore prévu. Si vous êtes intéressé par le matériel de formation, contactez {suse} pour discuter des possibilités avec l'équipe de formation.
+
+[#support-and-documentation]
+=== Support et documentation
+
+[.qanda]
+Y a-t-il une stratégie de support pour {productname} ?::
+Oui. La stratégie de support de {productname} est la même que celle de tout autre produit complémentaire {ranchera} Prime.
+
+Si la documentation de {productname} manque d'informations, puis-je me référer à la documentation officielle de {harbor} ?::
+Oui. Puisque {productname} est basé sur {harbor}, la documentation officielle de {harbor} est une ressource utile. Pour les fonctionnalités spécifiques à la version SUSE, référez-vous à la documentation de {productname}.
++
+Le xref:pr-relnotes[] précise quelle version {harbor} en amont correspond à votre version {productname}.

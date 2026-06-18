@@ -1,0 +1,1 @@
+../../en/adoc/release_notes.adoc

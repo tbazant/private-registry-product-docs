@@ -1,0 +1,46 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-requirements]
+== 要件
+
+:revdate: 2026-06-05
+:page-revdate: {revdate}
+
+
+このセクションでは、{productname}の最小プラットフォーム要件と推奨される本番環境のサイジングについて説明します。
+
+[#pr-deployment-prerequisites]
+=== 前提条件
+* {kube} クラスター バージョン 1.20 以上
+* {helm} バージョン 3.2.0 以上
+* インフラストラクチャにおける永続ボリューム (PV) プロビジョナーのサポート
+* {productname} の有効なサブスクリプション
+
+[#pr-deployment-hardware-sizing]
+=== ハードウェアおよびサイズの推奨事項
+これらの値を本番環境の開始点として使用してください。保持ポリシー、イメージの変動、スキャンの同時実行、およびレプリケーショントラフィックに基づいて調整してください。==== クラスターのベースライン
+
+[cols="1,1",options="header"]
+|===
+| スコープ | 推奨される本番環境の開始点
+| ワーカーノード | 最低3台のワーカーノード
+| ノードの形状 | ノードごとに最低 4 vCPU および 16 GiB RAM
+| 推奨されるノードの形状 | より高いスキャンおよびプッシュの同時実行のために、ノードごとに 8 vCPU および 32 GiB RAM
+|===
+
+これらの推奨事項は、RKE2 Kubernetes に関する Rancher のガイダンスと一致しています。
+詳細については、 https://ranchermanager.docs.rancher.com/getting-started/installation-and-upgrade/installation-requirements#rke2-kubernetes[RKE2 Kubernetes のインストール要件]を参照してください。
+
+==== 永続ストレージのベースライン
+
+[cols="1,1,1",options="header"]
+|===
+| コンポーネント | デフォルトのチャートサイズ | 推奨される開始サイズ
+| レジストリデータ | 5 Gi | 500 Gi から 1 Ti
+| TrivyキャッシュとDB | 5 Gi | 20 Gi から 50 Gi
+| ジョブサービスログ | 1 Gi | 10 Gi
+| 内部PostgreSQL（使用している場合） | 1 Gi | 最小 20 Gi
+| 内部Valkey（使用している場合） | 1 Gi | 最小 20 Gi
+|===
+
+チャートのデフォルトはインストール指向であり、長期的な生産能力の値として使用すべきではありません。

@@ -1,0 +1,44 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-deployment-ha]
+== {ha} configuration
+:revdate: 2025-05-04
+:page-revdate: {revdate}
+
+Vous pouvez utiliser {helm} pour déployer le hautement disponible (HA) {productnameshort} sur un cluster {kube}.
+Le {hasetup} garantit que les utilisateurs ne subissent pas d'interruptions de service si l'un des nœuds sur lequel {productnameshort} fonctionne devient indisponible.
+
+[#pr-deployment-ha-architecture]
+=== Architecture du {hasetup} 
+
+La plupart des composants du {productnameshort} sont désormais sans état.
+Par conséquent, nous pouvons les mettre à l'échelle en augmentant le nombre de réplicas de pods, garantissant qu'ils s'exécutent sur plusieurs nœuds de travail. Les services {kube} assurent la connectivité entre les pods.
+
+Pour le stockage, les utilisateurs doivent fournir un {postgresql} HA et un cluster {valkey} ou {redis} pour les données de l'application, ainsi que des PVC ou un stockage d'objets pour stocker des images et des graphiques.
+
+image::private-registry-ha.png[{productnameshort} {hasetup}, width=100%]. {productnameshort} {hasetup} Un cluster {kube} avec {ingress} dans {hasetup} utilisant HA {postgresql} et HA {valkey}.
+
+
+[#pr-deployment-ha-prerequisites]
+=== Conditions préalables
+* Un {kube} cluster version 1.20 ou supérieure
+* {helm} version 3.2.0 ou supérieure
+* Contrôleur HA {ingress} ({productnameshort} ne gère pas le point de terminaison externe)
+* HA {postgresql} 9.6+ ({productnameshort} ne gère pas le déploiement de la base de données HA)
+* HA {valkey} ou {redis} ({productnameshort} ne gère pas le déploiement de HA {valkey} ou {redis})
+* Requête de volume persistant (PVC) qui peut être partagée entre les nœuds ou avec un stockage d'objets externe
+* Un abonnement actif pour {productname}
+
+[#pr-deployment-ha-procedure]
+=== Déploiement de {productnameshort} avec HA
+
+. Téléchargez le graphique {productnameshort} {helm}.
+[source]
+  $ helm pull oci://registry.suse.com/private-registry/private-registry-helm --untar
+. Update the deployment parameters to match your requirements.
+Refer to <<pr-ha-helm-chart-example>> for an example {helm} chart for {productnameshort} HA setup.
+Refer to <<pr-helm-chart-override>> for a complete list of values to specify or override.
+. Install the {productnameshort} {helm} chart.
+Replace `<RELEASE_NAME>` with your custom release name for the {helm} chart deployment.
+[source]
+  $ helm install <RELEASE_NAME> private-registry-helm/

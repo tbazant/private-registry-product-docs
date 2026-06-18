@@ -1,0 +1,142 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-faq]
+== 常见问题解答
+
+:revdate: 2026-05-28
+:page-revdate: {revdate}
+
+[#product-overview-and-differentiators]
+=== 产品概述和差异化
+
+[.qanda]
+客户需要什么样的订阅才能使用{productname}？::
+它包含在{ranchera}套件中，并作为{ranchera} Prime的附加产品提供。
++
+附加产品的定价与其他附加产品相同。
+
+与{harbor}（来自应用程序集合或上游）有什么差异？::
+如果您需要，请使用{productname}：
+* 产品问题的三级（L3）支持。
+* 可预测的发布周期。
+* 针对已知漏洞的修补镜像。来自{harbor}的上游{dhub}镜像通常包含link:https://artifacthub.io/packages/helm/harbor/harbor?modal=security-report[众多未修补的漏洞]。
++
+随着时间的推移，{suse}还将添加与{ranchera}的开箱即用集成，并优先考虑客户的功能请求。
+
+客户是否必须购买与 {ranchera} Prime 订阅数量相同的 {productname} 附加产品订阅？::
+是的，就像其他附加产品，例如{suse}安全一样。{productname}订阅模型的另一个优势是允许客户根据需要运行任意数量的部署。
+
+[#relationship-with-upstream-harbor]
+=== 与上游{harbor}的关系
+
+[.qanda]
+发布周期如何与上游{harbor}对齐？::
+{productname}的发布周期独立于上游{harbor}的发布周期。
++
+在发布新版本的{productname}时，{suse}旨在包括符合SUSE质量保证和维护要求的上游{harbor}项目的最新版本。
+
+您会为从其他来源运行{harbor}的客户发布迁移注意事项吗？::
+目前还没有发布计划。
+
+[#deployment-and-installation]
+=== 部署和安装
+
+[.qanda]
+您支持通过 {productname} 安装 {compose} 吗？::
+不可以。您必须使用其 {productname} 图表安装和配置 {helm}。此图表还用于持续管理（第二天操作），并可以与 GitOps 工作流集成。
+
+您推荐在本地（{ranchera} 管理器）集群上进行部署吗？::
+不，SUSE 建议在下游集群上部署 {productname}。这使得注册表可以被其他需要使用镜像的下游集群访问。
+
+高可用性（HA）环境的最佳部署实践是什么？::
+对于 HA，请勿在 {productname} 管理集群上部署 {ranchera} 以避免资源争用。
++
+您可以在专用集群上部署 {productname}，或在一个或多个应用程序集群上部署。
++
+有关指导，请参见 xref:pr-deployment-ha[]。请注意，您必须为 Postgres 数据库、Valkey 或 Redis 服务器以及 {ingress} 控制器提供自己的 HA 组件。这些组件不由 {productname} {helm} 图表部署，也不受 {suse} 支持。
+
+// Will there be guidance for Edge deployments?::
+// TBD.
+
+{productname} {helm} 图表最终会添加到应用程序集合中吗？::
+是的，SUSE 计划在未来将图表发布到那里。
+
+您提供 {kube} Operator 吗？::
+{productname} 不附带专用 Operator。它是通过其 {helm} 图表安装和管理的，可以与 GitOps 集成。{suse} 继续评估基于 Operator 的管理以用于未来的版本。
+
+[#security-scanning-and-signing]
+=== 安全性、扫描和签名
+
+[.qanda]
+您是否在{productname}中集成了任何签名工具？::
+{productname}本身不签署图像，但可以存储、分发和验证与开放容器倡议（OCI）兼容的签名。
++
+一个广泛使用的工具是`cosign`，它可以签署图像并将签名存储在{productname}中。
++
+附加到图像的`cosign`签名可以从{productname}门户查看和下载。
+
+在部署过程中，是否可以使用Notary或Cosign对图像进行签名以获得批准？::
+{productname}可以存储、分发和验证`cosign`签名。
++
+{productname}本身不签署图像。您必须在构建过程中对图像进行签名，然后将签名与图像一起上传到注册表。
++
+Notary不包含在{productname}中，也不受支持。
+
+图像是仅使用Trivy扫描常见漏洞和暴露（CVE），还是也可以使用{suse}安全（NeuVector）？::
+图像使用Trivy扫描，Trivy是开箱即用的。可以将{suse}安全添加到Trivy中，作为补充或替代。
+
+是否可以运行ClamAV或类似的恶意软件扫描？::
+默认情况下，{productname}使用Trivy扫描图像。您还可以将{suse}安全（NeuVector）配置为扫描器。
+
+在拉取缓存场景中，是否会强制执行漏洞标准？::
+是的，但有已知的限制。由于上游{harbor}link:https://github.com/goharbor/harbor/issues/16218[问题]，在图像的第一次拉取时不会强制执行漏洞标准，因为扫描尚未完成。
++
+为了全面覆盖，将{productname}与{suse}安全link:https://open-docs.neuvector.com/policy/admission#admission-control-criteria[准入控制]配对。
+
+{productname}的图像是否经过加固？::
+可以。{productname} 的容器镜像已被加固。它们基于 SUSE Linux Enterprise 基础容器镜像 (SLE BCI)，并在用于 SUSE Linux Enterprise 的同一企业级 SUSE 构建服务中构建。这确保了安全供应链。这些镜像也经过签名，SUSE 发布了其软件工件供应链级别 (SLSA) 的认证。
+
+{productname} 的镜像是否已签名？如何实现？::
+这些镜像使用 `cosign` 进行了签名。您可以通过保存在 link:https://www.suse.com/support/kb/doc/?id=000021411[KB 000021411] 发布的 PEM 格式签名密钥来验证它们。
++
+然后运行，例如：
++
+[source,bash]
+----
+cosign verify --key container-key.pem registry.suse.com/private-registry/harbor-portal:latest
+----
+
+[#replication-and-sync]
+=== 复制和同步
+
+[.qanda]
+是否有计划开发一个插件以与 {sregistry} 和 {sappco} 同步？::
+是的，计划中有这样的功能。
+
+// When replicating from {sappco}, are SBOMs also replicated?::
+// TBD.
+
+{productname} 是否提供多站点复制？::
+是的。{productname} 支持基于策略的多站点镜像复制（拉取和推送）。您可以在保持每个注册表独立的同时，在多个 {productname} 部署之间同步镜像。
+
+[#features-and-integration-with-ranchera]
+=== 与 {ranchera} 的功能和集成
+
+[.qanda]
+是否有计划通过扩展将注册表集成到 {ranchera} 中？::
+是的。{suse} 计划与 {ranchera} Prime 和其他产品进行更深入的集成。正在考虑的未来增强功能包括单点登录 (SSO) 集成、简化 {ssecurity} 扫描仪的设置和应用程序集合镜像、与 {sobservability} 的监控，以及 {ranchera} UI 扩展。
+
+{suse} 会将注册表添加到培训目录中吗？::
+这尚未计划。如果您对培训材料感兴趣，请联系{suse}与培训团队讨论可能性。
+
+[#support-and-documentation]
+=== 支持和文档
+
+[.qanda]
+是否有关于{productname}的支持政策？::
+可以。{productname} 的支持政策与其他 {ranchera} Prime 附加产品相同。
+
+如果{productname}文档缺乏信息，我可以参考官方的{harbor}文档吗？::
+可以。由于{productname}基于{harbor}，官方的{harbor}文档是一个有用的资源。有关特定于SUSE版本的功能，请参考{productname}文档。
++
+xref:pr-relnotes[]指定哪个上游{harbor}版本对应于您的{productname}版本。

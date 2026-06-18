@@ -1,0 +1,145 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-deployment]
+== 使用命令行进行安装
+
+:revdate: 2026-05-04
+:page-revdate: {revdate}
+
+以下步骤描述了如何在 {kube} 集群上部署 {productname} ({productnameshort})。
+
+[#pr-deployment-kube-secrets]
+=== 从 {kube} 获取 {scc} 密钥
+要从 {productnameshort} 下载并安装 {sregistry} 镜像，您需要一个带有 {scc} ({scca}) 镜像凭据的 {kube} 密钥。
+要从 {scca} 获取凭据，请按照以下步骤操作：
+
+. 请访问 {scc}（网址： https://scc.suse.com）并登录。
+. 从左侧边栏选择具有有效 {productnameshort} 订阅的组织。
+. 在顶部菜单中选择 `Proxies`。右上角即会显示身份凭证。
+. 要查看口令，请单击“眼睛”图标。
+. 创建一个包含获取的口令的 `password.txt` 文件。
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}head -1 ./password.txt | helm registry login registry.suse.com \
+  --username <PRIVATE_REGISTRY_USERNAME> --password-stdin
+----
+
+. 为 {sregistry} 创建一个名称空间。
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl create namespace <PRIVATE_REGISTRY_NAMESPACE>
+----
+
+. 通过运行以下命令，将从 {scca} 检索到的镜像凭据存储为 {kube} 密钥：
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl create secret docker-registry suse-registry \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+  --docker-server=registry.suse.com \
+  --docker-username=<PRIVATE_REGISTRY_USERNAME> \
+  --docker-password=$(head -1 ./password.txt)
+----
+
+. 可选地，要使用 TLS 加密通信，请从您的私钥和证书文件创建一个 TLS 密钥。
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl create secret tls suse-registry-tls \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+  --cert=<CERTIFICATE>.pem \
+  --key=<PRIVATE_KEY>.pem
+----
+
+[#pr-deployment-installing-and-running]
+=== 使用 {helm} 安装和运行 {productnameshort}
+以下步骤描述了如何使用 {helm} 安装 {productnameshort}。
+将 `<RELEASE_NAME>` 替换为您自定义的 {helm} 图表部署的发布名称。
+
+. 使用获取的 {scca} 镜像凭据登录到 {sregistry}。
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}head -1 ./password.txt | helm registry login registry.suse.com \
+  --username <SUSE_REGISTRY_USERNAME> --password-stdin
+----
+
+. 安装最新版本的 {productnameshort} {helm} 图表。
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+----
++
+当您安装 {productnameshort} {helm} 图表时，它会显示以下输出：
++
+[source,bash,subs="+attributes"]
+----
+NOTES:
+CHART VERSION: 1.1.6
+It may take several minutes for the SUSE Private Registry  1.1.2 deployment to complete.
+
+Once the deployment has finished, you will be able to open the SUSE Private Registry portal at https://core.harbor.domain
+
+To get the admin credentials, copy and run the following commands:
+
+echo Username: "admin"
+echo Password: $(kubectl get secret --namespace <PRIVATE_REGISTRY_NAMESPACE>-harbor-core <RELEASE_NAME> -o jsonpath="{.data.HARBOR_ADMIN_PASSWORD}" | base64 -d)
+----
++
+使用 {helm} 版本 4，您可以使用摘要来指定要安装的图表：
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm@sha256:<DIAGEST_OF_CHART_TO_INSTALL> \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+----
+
+[TIP]
+====
+* 要获取管理员用户的密码，您还可以运行以下命令：
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl get secret \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+  --harbor-core <RELEASE_NAME> \
+  -o jsonpath="{.data.HARBOR_ADMIN_PASSWORD}" | base64 -d; echo
+----
+
+* 可以使用 kstatus watcher 和标志 '--wait=watcher' 来确保所有对象准备好完成安装。
+使用 watcher 可能会导致命令执行时间更长。
+====
+
+要用来自 `suse_registry_override.yaml` 文件的自定义值覆盖默认安装，请参考 <<pr-helm-chart-override>>。
+
+该命令开始部署多个相关容器，可能需要几分钟才能完成。
+它还会打印一条消息，包含 {productnameshort} Web 门户的 URL 和获取管理员凭据的命令。
+
+[#pr-deployment-upgrading]
+=== 升级 {productnameshort}
+
+要将 {helm} 图表的版本升级到特定的新版本，请运行以下命令：
+
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm upgrade <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --version <NEW_VERSION_OF_HELM_CHART> \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+----
+
+摘要仅在 {helm} 4 中可用。
+
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm update <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm@sha256:<DIAGEST_OF_CHART_TO_INSTALL> \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+----
+

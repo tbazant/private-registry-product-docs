@@ -1,0 +1,81 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-ha-helm-chart-example]
+== {productnameshort} HA 设置 {helm} 图表的示例
+:revdate: 2025-09-01
+:page-revdate: {revdate}
+
+以下示例值文件说明了最小 {productnameshort} HA 设置所需的参数。
+
+[source,yaml]
+----
+expose:
+  ingress:
+    hosts:
+      core: core.harbor.domain //<1>
+
+externalURL: https://core.harbor.domain //<2>
+
+portal:
+  replicas: 2 //<3>
+
+core:
+  replicas: 2 //<3>
+
+jobservice:
+  replicas: 2 //<3>
+
+registry:
+  replicas: 2 //<3>
+
+database:
+  type: external
+  external: // <4>
+    host: "192.168.0.1"
+    port: "5432"
+    username: "user"
+    password: "password"
+    coreDatabase: "registry"
+    existingSecret: "" //<5>
+    sslmode: "disable" //<6>
+
+redis:
+  type: external
+  external: //<7>
+    addr: "192.168.0.2:6379" //<8>
+    sentinelMasterSet: "" //<9>
+    coreDatabaseIndex: "0" //<10>
+    jobserviceDatabaseIndex: "1"
+    registryDatabaseIndex: "2"
+    trivyAdapterIndex: "5"
+    harborDatabaseIndex: "6" //<11>
+    cacheLayerDatabaseIndex: "7"//<12>
+    username: "" //<13>
+    password: ""
+    existingSecret: "" //<14>
+
+persistence:
+  enabled: true //<15>
+----
+[callouts]
+<1> 规则中{ingress}的内核服务主机名。
+<2> harbor-core 服务的外部 URL。
+<3> 要创建的副本数量。请指定两个或更多。
+<4> 在 `external` 部分填写数据库连接详细信息。
+<5> 如果使用现有的密钥，则值必须为 `password`。
+<6> 接受以下值之一：
+  disable:: 不要使用 SSL。
+  require:: 始终使用 SSL 并跳过验证。
+  verify-ca:: 始终使用 SSL。验证服务器提供的证书是否由受信任的 CA 签名。
+  verify-full:: 始终使用 SSL。验证服务器提供的证书是否由受信任的 CA 签名，并且服务器主机名与证书中的名称匹配。
+<7> 在 `external` 部分填写连接信息。
+<8> 支持 redis 和 redis+sentinel。 +
+  redis 的地址是 `<redis_host>:<redis_port>`。 +
+  redis+sentinel 的地址是 `<sentinel1_host>:<sentinel1_port>`,`<sentinel2_host>:<sentinel2_port>`...
+<9> 要监控的 {valkey} 实例集的名称。必须设置以支持 redis+sentinel。
+<10> 必须是 `0`，因为 Harbor 使用的库不支持配置。
+<11> 可选。默认为`0`，但可以配置为`6`。
+<12> 可选。默认为`0`，但可以配置为`7`。
+<13> 如果为空，则会根据默认用户进行身份验证。
+<14> 如果使用，密钥必须是<REDIS_PASSWORD>。
+<15> 要存储所有图像、元数据和扫描，请确保xref:helm-persistence-parameters[持久性相关设置]已正确配置。

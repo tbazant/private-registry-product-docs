@@ -1,0 +1,47 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-requirements]
+== Configuration requise
+
+:revdate: 2026-06-05
+:page-revdate: {revdate}
+
+
+Cette section décrit les prérequis minimaux de la plateforme et la taille de production recommandée pour {productname}.
+
+[#pr-deployment-prerequisites]
+=== Conditions préalables
+* Une version 1.20 ou supérieure {kube}du cluster
+* Une {helm}version 3.2.0 ou supérieure de
+* Support du provisionneur de volume persistant (PV) dans votre infrastructure
+* Un abonnement actif pour {productname}
+
+[#pr-deployment-hardware-sizing]
+=== Recommandations matérielles et de dimensionnement :
+Utilisez ces valeurs comme point de départ pour la production. Ajustez en fonction de la politique de rétention, du renouvellement d'images, de la concurrence des analyses et du trafic de réplication.
+==== Base de référence du cluster
+
+[cols="1,1",options="header"]
+|===
+| Étendue | Point de départ recommandé
+| Nœuds de travail | Minimum de 3 nœuds de travail
+| Type de nœud : | Minimum de 4 vCPU et 16 GiB de RAM par nœud
+| Type de nœud préféré : | 8 vCPU et 32 GiB de RAM par nœud pour une plus grande concurrence d'analyse et de poussée
+|===
+
+Ces recommandations sont conformes aux directives de Rancher pour RKE2 Kubernetes.
+Pour plus de détails, voir https://ranchermanager.docs.rancher.com/getting-started/installation-and-upgrade/installation-requirements#rke2-kubernetes[exigences d'installation de RKE2 Kubernetes].
+
+==== Base de référence de stockage persistant :
+
+[cols="1,1,1",options="header"]
+|===
+| Composant | Taille par défaut du graphique : | Taille de départ recommandée :
+| Données du registre : | 5 Gi | 500 Gi à 1 Ti
+| Cache et base de données Trivy : | 5 Gi | 20 Gi à 50 Gi
+| Journaux de Jobservice : | 1 Gi | 10 Gi
+| PostgreSQL interne (si utilisé) : | 1 Gi | 20 Gi minimum
+| Valkey interne (si utilisé) : | 1 Gi | 20 Gi minimum
+|===
+
+Les valeurs par défaut du graphique sont orientées vers l'installation et ne doivent pas être utilisées comme valeurs de capacité de production à long terme.

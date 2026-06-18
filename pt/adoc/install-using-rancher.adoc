@@ -1,0 +1,59 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-install-rancher]
+== Instalação usando o {ranchera} UI
+
+:revdate: 2026-05-05
+:page-revdate: {revdate}
+
+Para instalar {productname} usando o {ranchera} UI, você deve atender aos seguintes requisitos e seguir os passos abaixo.
+
+[#pr-install-rancher-requirements]
+=== Quais requisitos preciso atender?
+
+* Um ambiente com um ou mais clusters {kube} suportados em execução e {ranchera} implantado.
+Consulte link:https://documentation.suse.com/cloudnative/rancher-manager/latest/en/installation-and-upgrade/requirements/requirements.html[{ranchera} requisitos de instalação] para mais detalhes.
+* Credenciais {sregistry} para uma conta com uma assinatura {productname} (um nome de usuário e uma senha/token).
+Consulte link:https://documentation.suse.com/en-us/cloudnative/suse-private-registry/html/private-registry/pr-deployment.html#pr-deployment-kube-secrets[Obtendo {kube} segredos de {scca}] para mais detalhes.
+
+
+[#pr-install-rancher-procedure]
+=== Quais são os passos para instalar {productname} usando o {ranchera} UI?
+
+.*ETAPA 1*: Diga ao {ranchera} onde o repositório {productname} está localizado para procurar o chart de instalação.
+. Faça login no {ranchera}.
+. Clique no menu de três linhas (☰) no canto superior esquerdo, selecione menu:Gerenciamento de Cluster[], e clique no nome do seu cluster, geralmente `local`.
+. No menu à esquerda, selecione menu:Apps[Repositórios].
+. Clique no botão btn:[Criar] no canto superior direito e preencha o formulário que se abre:
+  .. *Destino*: Selecione btn:[Repositório OCI].
+  .. *Nome*: Digite um nome para o repositório, como `SUSE Private Registry`.
+  .. *Descrição*: Opcionalmente, adicione uma descrição do repositório.
+  .. *URL do Host do Repositório OCI*: Enter \`oci://registry.suse.com/private-registry/private-registry-helm`.
+  .. *Autenticação*: Altere para `Create an HTTP Basic Auth Secret` e insira o nome de usuário e a senha das credenciais do registro.
+. Confirme com btn:[Criar].
+
+.Adicionando um repositório {productname}
+image::spr-rancher-add-repo.png[Uma captura de tela mostrando como adicionar um repositório {productname} ao {ranchera}, width=100%]
+
+.*ETAPA 2*: Crie um segredo para acessar as imagens no \`registry.suse.com`.
+. Clique no menu de três linhas (☰) no canto superior esquerdo e selecione menu:Gerenciamento de Cluster[].
+. Mude para o cluster ao qual você deseja adicionar o segredo e clique em btn:[Explorar].
+. Para navegar até o gerenciamento de segredos, selecione menu:Armazenamento[Segredos] e clique em btn:[Criar] no canto superior direito.
+. Selecione o segredo btn:[HTTP Basic Auth] e, em seguida, o namespace `private-registry`.
+. Digite `suse-registry` como o nome do segredo.
+. Preencha os campos `username` e `password` com as credenciais {suse} obtidas em xref:pr-install-rancher-requirements[].
+
+.Adicionando segredos {productname}
+image::spr-rancher-add-secrets.png[Uma captura de tela mostrando como adicionar segredos {productname} ao {ranchera}, width=100%]
+
+.*ETAPA 3*: Instale o {helm} chart.
+. No menu principal à esquerda, selecione menu:Apps[Charts].
+. Digite o nome do {productname} repositório atribuído na caixa de pesquisa. Por exemplo, `SUSE Private Registry`.
+Se não aparecer na lista, clique em btn:[Atualizar todos os repositórios].
+. Clique no chart e visualize o `README.md`.
+. Opcionalmente, você pode personalizar os valores de instalação.
+Ou clique nas seções do lado esquerdo do painel `Edit Options` para visualizar todos os valores que você pode configurar, ou edite os valores diretamente no arquivo YAML do chart.
+. No canto superior direito, clique em btn:[Instalar esta versão].
+
+.Instalando {productname}
+image::spr-rancher-install.png[Uma captura de tela mostrando a tela de instalação do {productname} em {ranchera}, width=100%]

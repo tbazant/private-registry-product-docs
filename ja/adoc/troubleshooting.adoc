@@ -1,0 +1,28 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-troubleshooting]
+== トラブルシューティング
+:revdate: 2026-02-23
+:page-revdate: {revdate}
+
+このセクションでは、{productname}をデプロイする際や使用する際に遭遇する可能性のある問題に対する解決策を提供します。
+
+[.qanda]
+`401 unauthorized`をインストールしようとしたときに、{productname}エラーが発生しています。::
+エラーメッセージの完全なバージョンは次のようになります：
++
+[source]
+----
+Error: INSTALLATION FAILED:
+GET "https://registry.suse.com/v2/private-registry/private-registry-helm/tags/list":
+response status code 401: unauthorized:
+authentication required:
+[map[Action:pull Class: Name:private-registry/private-registry-helm Type:repository]]
+----
++
+{productname}をインストールして使用するには、次のものが必要です：
+
+* この製品を含む適格なサブスクリプション、例えば{ranchera}スイート サブスクリプションまたは{productname}アドオン サブスクリプション。
+  適格なサブスクリプションをお持ちでない場合は、{suse}の担当者にお問い合わせください。
+* サブスクリプションを保持している{sregistry}組織の{helm}ミラーリング資格情報を使用して、{scca}で{scca}にログインします。
+  詳細については、xref:pr-deployment-kube-secrets[]を参照してください。

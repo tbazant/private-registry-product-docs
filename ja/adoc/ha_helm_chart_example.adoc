@@ -1,0 +1,81 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-ha-helm-chart-example]
+== {productnameshort} HAセットアップ{helm}チャートの例
+:revdate: 2025-09-01
+:page-revdate: {revdate}
+
+次の例値ファイルは、最小限の{productnameshort} HAセットアップに必要なパラメータを示しています。
+
+[source,yaml]
+----
+expose:
+  ingress:
+    hosts:
+      core: core.harbor.domain //<1>
+
+externalURL: https://core.harbor.domain //<2>
+
+portal:
+  replicas: 2 //<3>
+
+core:
+  replicas: 2 //<3>
+
+jobservice:
+  replicas: 2 //<3>
+
+registry:
+  replicas: 2 //<3>
+
+database:
+  type: external
+  external: // <4>
+    host: "192.168.0.1"
+    port: "5432"
+    username: "user"
+    password: "password"
+    coreDatabase: "registry"
+    existingSecret: "" //<5>
+    sslmode: "disable" //<6>
+
+redis:
+  type: external
+  external: //<7>
+    addr: "192.168.0.2:6379" //<8>
+    sentinelMasterSet: "" //<9>
+    coreDatabaseIndex: "0" //<10>
+    jobserviceDatabaseIndex: "1"
+    registryDatabaseIndex: "2"
+    trivyAdapterIndex: "5"
+    harborDatabaseIndex: "6" //<11>
+    cacheLayerDatabaseIndex: "7"//<12>
+    username: "" //<13>
+    password: ""
+    existingSecret: "" //<14>
+
+persistence:
+  enabled: true //<15>
+----
+[callouts]
+<1> {ingress}ルールのコアサービスのホスト名。
+<2> harbor-coreサービスの外部URL。
+<3> 作成するレプリカの数。2つ以上を指定してください。
+<4> `external`セクションにデータベース接続の詳細を入力してください。
+<5> 既存のシークレットを使用する場合、値は`password`でなければなりません。
+<6> 次のいずれかの値を受け入れます:
+  disable:: SSLを使用しないでください。
+  require:: 常にSSLを使用し、検証をスキップします。
+  verify-ca:: 常にSSLを使用します。サーバーが提示した証明書が信頼できるCAによって署名されていることを確認してください。
+  verify-full:: 常にSSLを使用します。サーバーが提示した証明書が信頼できるCAによって署名されており、サーバーホスト名が証明書のものと一致することを確認してください。
+<7> `external`セクションに接続情報を入力してください。
+<8> redisおよびredis+sentinelをサポートしています。 +
+  redisのアドレスは`<redis_host>:<redis_port>`です。 +
+  redis+sentinelのアドレスは`<sentinel1_host>:<sentinel1_port>`,`<sentinel2_host>:<sentinel2_port>`...です。
+<9> 監視する{valkey}インスタンスのセットの名前。redis+sentinelをサポートするように設定する必要があります。
+<10> Harborが使用するライブラリが設定をサポートしていないため、`0`でなければなりません。
+<11> オプション。デフォルトは`0`ですが、`6`に設定することもできます。
+<12> オプション。デフォルトは`0`ですが、`7`に設定することもできます。
+<13> 空の場合、デフォルトユーザーに対して認証されます。
+<14> 使用する場合、キーは<REDIS_PASSWORD>でなければなりません。
+<15> すべての画像、メタデータ、スキャンを保存するために、xref:helm-persistence-parameters[永続性に関連する設定]が適切に設定されていることを確認してください。

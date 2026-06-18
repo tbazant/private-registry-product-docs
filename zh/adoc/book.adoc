@@ -1,0 +1,61 @@
+:doctype: book
+:experimental:
+:docinfo:
+:toc: left
+
+include::../common/generic-attributes.adoc[]
+
+:revdate: 2026-05-04
+:page-revdate: {revdate}
+
+= 开始使用{productname}
+
+// Release Notes
+[preface]
+include::release_notes.adoc[]
+
+// Copyright
+[preface]
+include::../common/common_copyright_gfdl.adoc[]
+
+ifdef::env-github[]
+:imagesdir: ../images/
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+// Introduction
+include::introduction.adoc[]
+
+// Prerequisites
+include::requirements.adoc[]
+
+// Installation using Rancher UI
+include::install-using-rancher.adoc[]
+
+// Deployment
+include::install-using-cmdline.adoc[]
+
+// Deployment HA
+include::ha-setup.adoc[]
+
+include::configure-rancher-oidc.adoc[]
+
+//FAQ
+include::faq.adoc[]
+
+//Troubleshooting
+include::troubleshooting.adoc[]
+
+// Appendix
+[appendix]
+include::helm_chart_override.adoc[]
+
+[appendix]
+include::ha_helm_chart_example.adoc[]
+
+[appendix]
+include::../common/common_license_gfdl1.2.adoc[]

@@ -1,0 +1,426 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-helm-chart-override]
+== Substituindo o gráfico {productname} {helm}
+:revdate: 2025-10-15
+:page-revdate: {revdate}
+
+O gráfico {productname} ({productnameshort}) {helm} é entregue com valores padrão.
+Você pode ajustar a instalação do gráfico {helm} de uma das seguintes maneiras:
+
+* Anexe parâmetros específicos às flags `--set` na linha de comando `helm install`, por exemplo:
+[source]
+$ helm install <RELEASE_NAME> \
+oci://registry.suse.com/private-registry/private-registry-helm \
+--namespace <PRIVATE_REGISTRY_NAMESPACE> \
+--set harborAdminPassword=<MY_PASSWORD> \
+--set externalURL=https://<PRIVATE_REGISTRY_FQDN> \
+--set expose.ingress.hosts.core=<PRIVATE_REGISTRY_FQDN>
+* Create a {suse} custom `suse_registry_override.yaml` file and pass it to the `--f` flag, for example:
+[source]
+  $ helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+  -f suse_registry_override.yaml
+
+[#pr-helm-chart-override-examples]
+=== Exemplos de arquivos de substituição {sregistry} {helm}
+.Implantação mínima com {ingress}
+[example]
+----
+expose:
+  type: ingress //<1>
+  ingress:
+    hosts:
+      core: <PRIVATE_REGISTRY_FQDN> //<2>
+
+externalURL: https://<PRIVATE_REGISTRY_FQDN> //<3>
+
+harborAdminPassword: "<MY_PASSWORD>" //<4>
+
+database:
+  internal:
+    password: "<MY_PASSWORD_POSTGRESQL>"
+
+redis:
+  internal:
+   password: "<MY_PASSWORD_REDIS>"
+----
+[callouts]
+<1> Como {sregistry} é exposto. Pode ser `ingress`, `loadBalancer`, `nodePort` ou `clusterIPhis`. O padrão é `ingress`.
+<2> Nome de host para a configuração de rede interna do {kube}.
+<3> URL onde o aplicativo {sregistry} é executado. É usado para gerar links na interface do usuário, redirecionamentos e também para respostas da API.
+<4> A senha do administrador para o aplicativo.
+
+.Implantação típica com `loadBalancer`
+[example]
+----
+expose:
+  type: loadBalancer //<1>
+  tls:
+    enabled: true
+    certSource: secret //<2>
+    secret:
+      secretName: <SECRET_NAME>
+
+    auto:
+      commonName: <PRIVATE_REGISTRY_FQDN> //<3>
+
+externalURL: https://<PRIVATE_REGISTRY_FQDN> //<4>
+
+harborAdminPassword: "<MY_PASSWORD>" //<5>
+
+database:
+  internal:
+    password: "<MY_PASSWORD_POSTGRESQL>"
+
+redis:
+  internal:
+   password: "<MY_PASSWORD_REDIS>"
+----
+[callouts]
+<1> Como {sregistry} é exposto. Pode ser `ingress`, `loadBalancer`, `nodePort` ou `clusterIP`. O padrão é `ingress`.
+<2> Pode ser `auto`, `secret` ou `none`. Dependendo da opção, pode ser necessário incluir valores adicionais.
+<3> Ao usar a criptografia TLS, este campo deve corresponder ao valor `externalURL`.
+<4> URL onde o aplicativo {sregistry} é executado. É usado para gerar links na interface do usuário, redirecionamentos e também para respostas da API.
+<5> A senha do administrador para o aplicativo.
+
+[#pr-helm-chart-override-parameters]
+=== Substituindo os parâmetros e valores do gráfico {helm}
+
+As tabelas a seguir listam todos os parâmetros com descrições que você pode usar para substituir os valores de instalação padrão.
+
+.Parâmetros globais
+`global.imageRegistry`:: Define uma substituição global para o registro de imagens do contêiner usado para todas as imagens.
+`global.imagePullSecrets`:: Define segredos globais de pull para acessar o registro de imagens do contêiner.
+
+.Parâmetros comuns
+`harborAdminPassword`:: Define a senha inicial para o administrador {harbor}. Altere-a pelo portal após a implantação. O padrão é `Harbor12345`.
+`externalURL`:: Especifica a URL externa para o serviço `harbor-core`. O padrão é `\https://core.harbor.domain`.
+`existingSecretAdminPasswordKey`:: Define o nome da chave no segredo que contém a senha do administrador {harbor}. O padrão é `HARBOR_ADMIN_PASSWORD`.
+`imagePullSecrets`:: Define os nomes `imagePullSecrets` para todas as implantações.
+`updateStrategy.type`:: Define a estratégia de atualização para implantações com volumes persistentes. Aceita `RollingUpdate` ou `Recreate`. Use `Recreate` quando RWM para volumes não for suportado. O padrão é `RollingUpdate`.
+`logLevel`:: Define o nível de log para os serviços {harbor}. Aceita `fatal`, `error`, `warn`, `info`, `debug` ou `trace`. O padrão é `debug`.
+`enableMigratehelmHook`:: Executa a tarefa de migração do banco de dados via o gancho {helm}. Quando `true`, separa a tarefa de migração de `harbor-core`. O padrão é `false`.
+`caSecretName`:: Especifica o nome do segredo que contém a chave `ca.crt`.
+
+.Parâmetros de proxy
+`proxy.httpProxy`:: Especifica a URL do servidor proxy HTTP. O padrão é `""`.
+`proxy.httpsProxy`:: Especifica a URL do servidor proxy HTTPS. O padrão é `""`.
+`proxy.noProxy`:: Define URLs que ignoram a configuração do proxy. O padrão é `127.0.0.1,localhost,.local,.internal`.
+`proxy.components`:: Define componentes que utilizam a configuração do proxy. O padrão é `["core","jobservice","trivy"]`.
+
+.Parâmetros de exposição
+`expose.type`:: Especifica o tipo de exposição do serviço: `ingress`, `clusterIP`, `nodePort` ou `loadBalancer`. O padrão é `ingress`.
+`expose.tls.enabled`:: Habilita TLS. O padrão é `true`.
+`expose.tls.certSource`:: Define a fonte do certificado TLS como `auto`, `secret` ou `none`. O padrão é `auto`.
+`expose.tls.auto.commonName`:: Define o nome comum do certificado quando o tipo não é `ingress`.
+`expose.tls.secret.secretName`:: Especifica o nome do segredo que contém `tls.crt` (certificado) e `tls.key` (chave privada).
+`expose.ingress.hosts.core`:: Define o host do serviço kernel {harbor} na regra {ingress}. O padrão é `core.harbor.domain`.
+`expose.ingress.controller`:: Define o tipo de controlador {ingress}. Suporta `default`, `gce`, `alb`, `f5-bigip` e `ncp`. O padrão é `default`.
+`expose.ingress.kubeVersionOverride`:: Substitui a versão {kube} para a template {ingress}.
+`expose.ingress.annotations`:: Define as anotações {ingress}.
+`expose.ingress.labels`:: Define os rótulos específicos de {ingress}. O padrão é `{}`.
+`expose.clusterIP.name`:: Define o nome do serviço ClusterIP. O padrão é `harbor`.
+`expose.clusterIP.annotations`:: Define as anotações do serviço ClusterIP. O padrão é `{}`.
+`expose.clusterIP.ports.httpPort`:: Define a porta do serviço HTTP. O padrão é `80`.
+`expose.clusterIP.ports.httpsPort`:: Define a porta do serviço HTTPS. O padrão é `443`.
+`expose.clusterIP.labels`:: Define os rótulos específicos do ClusterIP. O padrão é `{}`.
+`expose.nodePort.name`:: Define o nome do serviço NodePort. O padrão é `harbor`.
+`expose.nodePort.ports.http.port`:: Define a porta do serviço HTTP. O padrão é `80`.
+`expose.nodePort.ports.http.nodePort`:: Define a porta do nó HTTP. O padrão é `30002`.
+`expose.nodePort.ports.https.port`:: Define a porta do serviço HTTPS. O padrão é `443`.
+`expose.nodePort.ports.https.nodePort`:: Define a porta do nó HTTPS. O padrão é `30003`.
+`expose.nodePort.annotations`:: Define as anotações do NodePort.
+`expose.nodePort.labels`:: Define os rótulos específicos do NodePort. O padrão é `{}`.
+`expose.loadBalancer.name`:: Define o nome do serviço. O padrão é `harbor`.
+`expose.loadBalancer.IP`:: Define o IP do loadBalancer quando a atribuição de IP é suportada. O padrão é `""`.
+`expose.loadBalancer.ports.httpPort`:: Define a porta do serviço HTTP. O padrão é `80`.
+`expose.loadBalancer.ports.httpsPort`:: Define a porta do serviço HTTPS. O padrão é `30002`.
+`expose.loadBalancer.annotations`:: Define as anotações do serviço loadBalancer. O padrão é `{}`.
+`expose.loadBalancer.labels`:: Define os rótulos específicos do loadBalancer. O padrão é `{}`.
+`expose.loadBalancer.sourceRanges`:: Especifica intervalos de endereços IP para loadBalancerSourceRanges. O padrão é `[]`.
+
+[#helm-persistence-parameters]
+.Parâmetros de persistência
+`persistence.enabled`:: Habilita ou desabilita a persistência de dados. O padrão é `true`.
+`persistence.resourcePolicy`:: `keep` impede a remoção de PVCs durante uma operação de exclusão {helm}. Valor vazio exclui PVCs após a exclusão do gráfico. O padrão é `keep`.
+`persistence.persistentVolumeClaim.registry.existingClaim`:: O PVC existente que deve ser criado manualmente antes da vinculação. Requer uma especificação de subPath se o PVC for compartilhado com outros componentes.
+`persistence.persistentVolumeClaim.registry.storageClass`:: O `storageClass` que provisiona o volume.
+`persistence.persistentVolumeClaim.registry.subPath`:: O subpath no volume.
+`persistence.persistentVolumeClaim.registry.accessMode`:: O modo de acesso do volume. O padrão é `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.registry.size`:: O tamanho do volume. O padrão é `5Gi`.
+`persistence.persistentVolumeClaim.registry.annotations`:: As anotações do volume.
+`persistence.persistentVolumeClaim.jobservice.jobLog.existingClaim`:: O PVC existente que deve ser criado manualmente antes da vinculação. Requer uma especificação de subPath se o PVC for compartilhado com outros componentes.
+`persistence.persistentVolumeClaim.jobservice.jobLog.storageClass`:: O `storageClass` que provisiona o volume.
+`persistence.persistentVolumeClaim.jobservice.jobLog.subPath`:: O subpath no volume.
+`persistence.persistentVolumeClaim.jobservice.jobLog.accessMode`:: O modo de acesso do volume. O padrão é `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.jobservice.jobLog.size`:: O tamanho do volume. O padrão é `1Gi`.
+`persistence.persistentVolumeClaim.jobservice.jobLog.annotations`:: As anotações do volume.
+`persistence.persistentVolumeClaim.database.existingClaim`:: O PVC existente que deve ser criado manualmente antes da vinculação. Requer uma especificação de subPath se o PVC for compartilhado com outros componentes.
+`persistence.persistentVolumeClaim.database.storageClass`:: O `storageClass` que provisiona o volume.
+`persistence.persistentVolumeClaim.database.subPath`:: O subpath no volume. Ignorado quando um banco de dados externo é utilizado.
+`persistence.persistentVolumeClaim.database.accessMode`:: O modo de acesso do volume. Ignorado quando um banco de dados externo é utilizado. O padrão é `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.database.size`:: O tamanho do volume. Ignorado quando um banco de dados externo é utilizado. O padrão é `1Gi`.
+`persistence.persistentVolumeClaim.database.annotations`:: As anotações do volume.
+`persistence.persistentVolumeClaim.redis.existingClaim`:: O PVC existente que deve ser criado manualmente antes da vinculação. Requer uma especificação de subPath se o PVC for compartilhado com outros componentes.
+`persistence.persistentVolumeClaim.redis.storageClass`:: O `storageClass` que provisiona o volume. Usa a StorageClass padrão se não for especificada.
+`persistence.persistentVolumeClaim.redis.subPath`:: O subpath no volume. Ignorado quando um {valkey} externo é utilizado.
+`persistence.persistentVolumeClaim.redis.accessMode`:: O modo de acesso do volume. Ignorado quando um {valkey} externo é utilizado. O padrão é `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.redis.size`:: O tamanho do volume. Ignorado quando um {valkey} externo é utilizado. O padrão é `1Gi`.
+`persistence.persistentVolumeClaim.redis.annotations`:: As anotações do volume.
+`persistence.persistentVolumeClaim.trivy.existingClaim`:: O PVC existente que deve ser criado manualmente antes da vinculação. Requer uma especificação de subPath se o PVC for compartilhado com outros componentes.
+`persistence.persistentVolumeClaim.trivy.storageClass`:: O `storageClass` que provisiona o volume. Usa a StorageClass padrão se não for especificada.
+`persistence.persistentVolumeClaim.trivy.subPath`:: O subpath no volume.
+`persistence.persistentVolumeClaim.trivy.accessMode`:: O modo de acesso do volume. O padrão é `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.trivy.size`:: O tamanho do volume. O padrão é `1Gi`.
+`persistence.persistentVolumeClaim.trivy.annotations`:: As anotações do volume.
+`persistence.imageChartStorage.disableredirect`:: Controla a gestão de redirecionamentos de back ends de conteúdo. Defina como verdadeiro para desabilitar redirecionamentos para back ends não suportados. O padrão é `false`.
+`persistence.imageChartStorage.caBundleSecretName`:: O nome do segredo contendo o pacote CA para certificados de serviço de armazenamento autoassinado.
+`persistence.imageChartStorage.type`:: O tipo de armazenamento para imagens e gráficos: `filesystem`, `azure`, `gcs`, `s3`, `swift` ou `oss`. O padrão é `filesystem`.
+`persistence.imageChartStorage.gcs.existingSecret`:: O nome do segredo existente contendo a chave JSON da conta de serviço GCS. A chave deve ser `gcs-key.json`. O padrão é `""`.
+`persistence.imageChartStorage.gcs.useWorkloadIdentity`:: Habilita o uso de identidade de carga de trabalho em um cluster GKE. O padrão é `false`.
+
+.Parâmetros {nginx}
+[options="header"]
+`nginx.image.repository`:: O repositório de imagens para {nginx}. O padrão é `private-registry/harbor-nginx`.
+`nginx.image.tag`:: A tag da imagem para {nginx}.
+`nginx.replicas`:: O número de réplicas a serem executadas. O padrão é `1`.
+`nginx.revisionHistoryLimit`:: O número máximo de revisões antigas de `ReplicaSet` a serem mantidas. O padrão é `10`.
+`nginx.resources`:: Os recursos de computação alocados para o contêiner. O padrão é `undefined`.
+`nginx.automountServiceAccountToken`:: Controla a montagem automática do token da conta de serviço. O padrão é `false`.
+`nginx.nodeSelector`:: Os rótulos do nó usados para a atribuição de pods. O padrão é `{}`.
+`nginx.tolerations`:: As tolerâncias de atribuição de pods. O padrão é `[]`.
+`nginx.affinity`:: As regras de afinidade de nó ou pod. O padrão é `{}`.
+`nginx.topologySpreadConstraints`:: As regras para espalhar pods por domínios de falha, como regiões ou zonas de disponibilidade. O padrão é `[]`.
+`nginx.podAnnotations`:: As anotações adicionadas ao {nginx} pod. O padrão é `{}`.
+
+
+.Parâmetros do portal
+`portal.image.repository`:: Localização do repositório para a imagem do portal. O padrão é `private-registry/harbor-portal`.
+`portal.image.tag`:: Tag para a imagem do portal. O padrão é `3.11`.
+`portal.replicas`:: Número de réplicas a serem criadas. O padrão é `1`.
+`portal.revisionHistoryLimit`:: Número máximo de revisões antigas de `ReplicaSet` a serem mantidas. O padrão é `10`.
+`portal.resources`:: Recursos alocados para o contêiner. O padrão é `undefined`.
+`portal.automountServiceAccountToken`:: Controla a montagem automática do token da conta de serviço. O padrão é `false`.
+`portal.nodeSelector`:: Rótulos de nó usados para atribuição de pod. O padrão é `{}`.
+`portal.tolerations`:: Tolerâncias usadas para atribuição de pod. O padrão é `[]`.
+`portal.affinity`:: Configurações de afinidade de nó e pod. O padrão é `{}`.
+`portal.topologySpreadConstraints`:: Define a distribuição de pods entre domínios de falha, como regiões ou zonas de disponibilidade. O padrão é `[]`.
+`portal.podAnnotations`:: Anotações adicionadas ao pod do portal. O padrão é `{}`.
+`portal.serviceAnnotations`:: Anotações adicionadas ao serviço do portal. O padrão é `{}`.
+`portal.priorityClassName`:: Nome da classe de prioridade para execução do pod.
+`portal.initContainers`:: Contêineres init a serem executados antes que o contêiner do controlador inicie. O padrão é `[]`.
+
+
+.Parâmetros principais
+`core.image.repository`:: O repositório para a {harbor} imagem do kernel. O padrão é `private-registry/harbor-core`.
+`core.image.tag`:: A tag para a {harbor} imagem do kernel. O padrão é `2.11`.
+`core.replicas`:: O número de réplicas. O padrão é `1`.
+`core.revisionHistoryLimit`:: O limite de histórico de revisões. O padrão é `10`.
+`core.startupProbe.initialDelaySeconds`:: O atraso inicial em segundos para a verificação de inicialização. O padrão é `10`.
+`core.resources`:: Os recursos a serem alocados para o contêiner. O padrão é `undefined`.
+`core.automountServiceAccountToken`:: Monta o token da conta de serviço. O padrão é `false`.
+`core.nodeSelector`:: Os rótulos de nó para atribuição de pod. O padrão é `{}`.
+`core.tolerations`:: As tolerâncias para atribuição de pod. O padrão é `[]`.
+`core.affinity`:: As afinidades de nó ou pod. O padrão é `{}`.
+`core.topologySpreadConstraints`:: As restrições que definem como os pods são distribuídos entre domínios de falha, como regiões ou zonas de disponibilidade. O padrão é `[]`.
+`core.podAnnotations`:: As anotações a serem adicionadas ao pod kernel. O padrão é `{}`.
+`core.serviceAnnotations`:: As anotações a serem adicionadas ao serviço kernel. O padrão é `{}`.
+`core.configureUserSettings`:: Uma string JSON na variável de ambiente CONFIG_OVERWRITE_JSON para configurar as configurações do usuário.
+`core.quotaUpdateProvider`:: O provedor para atualizar o uso da cota do projeto, as opções são `redis` ou `db`. O padrão é `db`.
+`core.secret`:: Usado quando o servidor kernel se comunica com outros componentes.
+`core.secretName`:: O nome de um {kube} segredo para usar seu próprio certificado TLS e chave privada para a criptografia ou descriptografia de token.
+`core.tokenKey`:: A chave privada RSA formatada em PEM usada para assinar tokens de serviço.
+`core.tokenCert`:: O certificado formatado em PEM assinado por `core.tokenKey` usado para validar tokens de serviço.
+`core.xsrfKey`:: A chave XSRF, gerada automaticamente se não for especificada.
+`core.priorityClassName`:: A classe de prioridade para executar o pod.
+`core.artifactPullAsyncFlushDuration`:: A duração do tempo para atualizar assíncronamente o tempo de pull de artefatos e a contagem de pull do repositório.
+`core.gdpr.deleteUser`:: Habilita a exclusão de usuários em conformidade com o GDPR. O padrão é `false`.
+`core.gdpr.auditLogsCompliant`:: Habilita a conformidade com o GDPR para logs de auditoria, alterando o nome de usuário para seu valor CRC32 se esse usuário foi excluído do sistema. O padrão é `false`.
+`core.initContainers`:: Os contêineres init a serem executados antes que o contêiner do controlador inicie. O padrão é `[]`.
+
+
+.Parâmetros do serviço de trabalho.
+`jobservice.image.repository`:: O repositório para a imagem do serviço de trabalho. O padrão é `private-registry/harbor-jobservice`.
+`jobservice.image.tag`:: A tag para a imagem do serviço de trabalho. O padrão é `2.11`.
+`jobservice.replicas`:: O número de réplicas. O padrão é `1`.
+`jobservice.revisionHistoryLimit`:: O limite de histórico de revisões. O padrão é `10`.
+`jobservice.maxJobWorkers`:: O número máximo de worker de trabalho. O padrão é `10`.
+`jobservice.jobLoggers`:: Os registradores para trabalhos: `file`, `database` ou `stdout`. O padrão é `[file]`.
+`jobservice.loggerSweeperDuration`:: A duração em dias para manter os logs de trabalho (ignorados se `jobLoggers` estiver definido como `stdout`). O padrão é `14`.
+`jobservice.notification.webhook_job_max_retry`:: O número máximo de tentativas para o envio de notificações via webhook. O padrão é `3`.
+`jobservice.notification.webhook_job_http_client_timeout`:: O tempo limite do cliente HTTP em segundos para o envio de notificações via webhook. O padrão é `3`.
+`jobservice.reaper.max_update_hours`:: O tempo máximo em horas para aguardar a conclusão de uma tarefa. Se a tarefa não for concluída após as horas especificadas, ela é marcada como um erro, mas continua em execução. O padrão é `24`.
+`jobservice.reaper.max_dangling_hours`:: O tempo máximo em horas para execução em estado de execução sem uma nova tarefa criada. O padrão é `168`.
+`jobservice.resources`:: Os [recursos] a serem alocados para o contêiner. O padrão é `undefined`.
+`jobservice.automountServiceAccountToken`:: Monta o token da conta de serviço. O padrão é `false`.
+`jobservice.nodeSelector`:: Os rótulos de nó para atribuição de pod. O padrão é `{}`.
+`jobservice.tolerations`:: As tolerâncias para atribuição de pod. O padrão é `[]`.
+`jobservice.affinity`:: As afinidades de nó ou pod. O padrão é `{}`.
+`jobservice.topologySpreadConstraints`:: As restrições que definem como os pods são distribuídos entre domínios de falha, como regiões ou zonas de disponibilidade. O padrão é `[]`.
+`jobservice.podAnnotations`:: As anotações a serem adicionadas ao pod do serviço de trabalho. O padrão é `{}`.
+`jobservice.priorityClassName`:: A classe de prioridade para executar o pod.
+`jobservice.secret`:: O segredo usado quando o serviço de trabalho se comunica com outros componentes. Se uma chave secreta não for especificada, {helm} a gera. Deve ser uma string de 16 caracteres.
+`jobservice.initContainers`:: Os contêineres init a serem executados antes que o contêiner do controlador inicie. O padrão é `[]`.
+
+
+.Parâmetros do registro
+`registry.registry.image.repository`:: A localização do repositório para a imagem do registro. O padrão é `private-registry/harbor-registry`.
+`registry.registry.image.tag`:: A tag para a imagem do registro. O padrão é `2.11`.
+`registry.registry.resources`:: Os [recursos] a serem alocados para o contêiner. O padrão é `undefined`.
+`registry.controller.image.repository`:: A localização do repositório para a imagem do controlador do registro. O padrão é `private-registry/harbor-registryctl`.
+`registry.controller.image.tag`:: A tag para a imagem do controlador do registro. O padrão é `2.11`.
+`registry.controller.resources`:: Os [recursos] a serem alocados para o contêiner. O padrão é `undefined`.
+`registry.replicas`:: O número de instâncias replicadas. O padrão é `1`.
+`registry.revisionHistoryLimit`:: O número máximo de revisões a serem mantidas no histórico. O padrão é `10`.
+`registry.nodeSelector`:: Os rótulos de nó para atribuição de pod. O padrão é `{}`.
+`registry.automountServiceAccountToken`:: Controla se deve montar o token da conta de serviço. O padrão é `false`.
+`registry.tolerations`:: As tolerâncias para atribuição de pod. O padrão é `[]`.
+`registry.affinity`:: As afinidades de nó ou pod. O padrão é `{}`.
+`registry.topologySpreadConstraints`:: As restrições que definem a distribuição de pods entre domínios de falha, como regiões ou zonas de disponibilidade. O padrão é `[]`.
+`registry.middleware`:: Suporte a middleware para um CDN entre o armazenamento de back end e {docker} destinatário de pull.
+`registry.podAnnotations`:: As anotações a serem adicionadas ao pod do registro. O padrão é `{}`.
+`registry.priorityClassName`:: A classe de prioridade para a execução do pod.
+`registry.secret`:: O segredo que protege o estado de upload entre o cliente e o armazenamento do registro back end.
+`registry.credentials.username`:: O nome de usuário para acesso ao registro interno do kernel {harbor}. O padrão é `harbor_registry_user`.
+`registry.credentials.password`:: A senha para acesso ao registro interno do kernel {harbor}. O padrão é `harbor_registry_password`.
+`registry.credentials.existingSecret`:: Um segredo existente contendo a senha para acesso à instância do registro no modo de autenticação htpasswd. O padrão é `""`.
+`registry.credentials.htpasswdString`:: O login e a senha no formato de string htpasswd. Exclui `registry.credentials.username` e `registry.credentials.password`. O padrão é `undefined`.
+`registry.relativeurls`:: Retorna URLs relativas nos cabeçalhos de Localização quando verdadeiro. Necessário se {harbor} estiver atrás de um proxy reverso. O padrão é `false`.
+`registry.upload_purging.enabled`:: Habilita a purgação de diretórios de upload. O padrão é `true`.
+`registry.upload_purging.age`:: O período de tempo após o qual os arquivos nos diretórios de upload são removidos, o padrão é uma semana. O padrão é `168h`.
+`registry.upload_purging.interval`:: O intervalo de tempo entre operações de purgação. O padrão é `24h`.
+`registry.upload_purging.dryrun`:: Habilita o modo de simulação para purgação de uploads. O padrão é `false`.
+`registry.initContainers`:: Os contêineres init que são executados antes do início do contêiner do controlador. O padrão é `[]`.
+
+
+.Parâmetros {trivy}
+`trivy.enabled`:: Habilita ou desabilita o {trivy} scanner. O padrão é `true`.
+`trivy.image.repository`:: O repositório para a {trivy} imagem do adaptador. O padrão é `private-registry/harbor-trivy-adapter`.
+`trivy.image.tag`:: A tag para a {trivy} imagem do adaptador. O padrão é `2.11`.
+`trivy.resources`:: Os recursos a serem alocados para o {trivy} contêiner do adaptador. O padrão é `undefined`.
+`trivy.automountServiceAccountToken`:: Se deve montar o token da conta de serviço. O padrão é `false`.
+`trivy.replicas`:: O número de réplicas do Pod. O padrão é `1`.
+`trivy.debugMode`:: Habilita o modo remover {trivy} para solução de problemas. O padrão é `false`.
+`trivy.vulnType`:: Lista de tipos de vulnerabilidades separados por vírgula (`os` e `library`). O padrão é `os,library`.
+`trivy.severity`:: Lista de severidades de vulnerabilidades a serem verificadas, separadas por vírgula. O padrão é `UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`.
+`trivy.ignoreUnfixed`:: Exibe apenas vulnerabilidades corrigidas. O padrão é `false`.
+`trivy.insecure`:: Ignora a verificação do certificado do registro. O padrão é `false`.
+`trivy.skipUpdate`:: Desabilita downloads de banco de dados {trivy} do GitHub. O padrão é `false`.
+`trivy.skipJavaDBUpdate`:: Requer download manual do arquivo `trivy-java.db` quando habilitado. O padrão é `false`.
+`trivy.offlineScan`:: Impede que {trivy} envie solicitações de API para identificar dependências. O padrão é `false`.
+`trivy.securityCheck`:: Lista de problemas de segurança a serem detectados, separados por vírgula. O padrão é `vuln`.
+`trivy.timeout`:: O tempo de espera para a conclusão da varredura. O padrão é `5m0s`.
+`trivy.gitHubToken`:: O token de acesso do GitHub necessário para downloads de banco de dados. O padrão é `undefined`.
+`trivy.priorityClassName`:: A classe de prioridade para executar o pod. O padrão é `undefined`.
+`trivy.topologySpreadConstraints`:: Define restrições de distribuição do pod entre domínios de falha. O padrão é `undefined`.
+`trivy.initContainers`:: Lista de contêineres init a serem executados antes do contêiner principal iniciar. O padrão é `[]`.
+
+.Parâmetros do banco de dados
+`database.type`:: O tipo de banco de dados. Defina como `external` ao usar um banco de dados externo. O padrão é `internal`.
+`database.internal.image.repository`:: O repositório para a imagem do banco de dados. O padrão é `private-registry/harbor-db`.
+`database.internal.image.tag`:: A tag para a imagem do banco de dados. O padrão é `2.11`.
+`database.internal.password`:: A senha para o banco de dados interno. O padrão é `changeit`.
+`database.internal.shmSizeLimit`:: O limite de tamanho da memória compartilhada para {postgresql} (tipicamente 50% do limite de memória do contêiner). O padrão é `512Mi`.
+`database.internal.resources`:: Os recursos alocados para o contêiner do banco de dados. O padrão é `undefined`.
+`database.internal.automountServiceAccountToken`:: Controla se o token da conta de serviço é montado. O padrão é `false`.
+`database.internal.initContainer.migrator.resources`:: Os recursos alocados para o contêiner de inicialização do migrador de banco de dados. O padrão é `undefined`.
+`database.internal.initContainer.permissions.resources`:: Os recursos alocados para o contêiner de inicialização das permissões do banco de dados. O padrão é `undefined`.
+`database.internal.nodeSelector`:: Os rótulos de nó para atribuição de pod. O padrão é `{}`.
+`database.internal.tolerations`:: As tolerâncias para atribuição de pod. O padrão é `[]`.
+`database.internal.affinity`:: As configurações de afinidade do nó ou pod. O padrão é `{}`.
+`database.internal.priorityClassName`:: A classe de prioridade para executar o pod. O padrão é `undefined`.
+`database.internal.livenessProbe.timeoutSeconds`:: O tempo limite em segundos para a liveness probe (intervalo: 1-5s). O padrão é `1`.
+`database.internal.readinessProbe.timeoutSeconds`:: O tempo limite em segundos para a verificação de prontidão (intervalo: 1-5s). O padrão é `1`.
+`database.internal.extrInitContainers`:: Contêineres de inicialização adicionais que são executados antes do contêiner do banco de dados iniciar. O padrão é `[]`.
+`database.external.host`:: O nome de host do banco de dados externo. O padrão é `192.168.0.1`.
+`database.external.port`:: O número da porta do banco de dados externo. O padrão é `5432`.
+`database.external.username`:: O nome de usuário para o banco de dados externo. O padrão é `user`.
+`database.external.password`:: A senha para o banco de dados externo. O padrão é `password`.
+`database.external.coreDatabase`:: O nome do banco de dados usado pelo serviço kernel. O padrão é `registry`.
+`database.external.existingSecret`:: O segredo existente contendo a senha do banco de dados. A chave deve ser `password`. O padrão é `""`.
+`database.external.sslmode`:: O método de conexão para o banco de dados externo. Opções: `require`, `verify-full`, `verify-ca`, `disable`. O padrão é `disable`.
+`database.maxIdleConns`:: O número máximo de conexões ociosas no pool (0 ou menos significa que nenhuma conexão ociosa é mantida). O padrão é `50`.
+`database.maxOpenConns`:: O número máximo de conexões abertas ao banco de dados (0 ou menos significa ilimitado). O padrão é `100`.
+`database.podAnnotations`:: As anotações a serem adicionadas ao pod do banco de dados. O padrão é `{}`.
+
+
+.{valkey} / {redis} parâmetros
+`redis.type`:: O tipo de implantação {redis}. Defina como `external` para {redis} externo. O padrão é `internal`.
+`redis.internal.image.repository`:: O repositório da imagem {redis}. O padrão é `private-registry/harbor-redis`.
+`redis.internal.image.tag`:: A tag da imagem {redis}. O padrão é `7.2`.
+`redis.internal.resources`:: Os recursos alocados para o contêiner {redis}. O padrão é `undefined`.
+`redis.internal.automountServiceAccountToken`:: Controla se o token da conta de serviço é montado. O padrão é `false`.
+`redis.internal.nodeSelector`:: Os rótulos de nó para atribuição de pod. O padrão é `{}`.
+`redis.internal.tolerations`:: As tolerâncias para atribuição de pod. O padrão é `[]`.
+`redis.internal.affinity`:: As configurações de afinidade do nó ou pod. O padrão é `{}`.
+`redis.internal.priorityClassName`:: A classe de prioridade para executar o {redis} pod. O padrão é `undefined`.
+`redis.internal.jobserviceDatabaseIndex`:: O índice do banco de dados para o jobservice. O padrão é `1`.
+`redis.internal.registryDatabaseIndex`:: O índice do banco de dados para o registry. O padrão é `2`.
+`redis.internal.trivyAdapterIndex`:: O índice do banco de dados para o {trivy} adaptador. O padrão é `5`.
+`redis.internal.harborDatabaseIndex`:: O índice do banco de dados para a {harbor} lógica de negócios diversa. O padrão é `0`.
+`redis.internal.cacheLayerDatabaseIndex`:: O índice do banco de dados para a camada de cache de {harbor}. O padrão é `0`.
+`redis.internal.initContainers`:: Os contêineres init que são executados antes do {redis} contêiner iniciar. O padrão é `[]`.
+`redis.external.addr`:: O endereço da {redis} instância externa. O padrão é `192.168.0.2:6379`.
+`redis.external.sentinelMasterSet`:: O nome do {redis} conjunto mestre Sentinel (se aplicável). O padrão é `undefined`.
+`redis.external.coreDatabaseIndex`:: O índice do banco de dados para o kernel. O padrão é `0`.
+`redis.external.jobserviceDatabaseIndex`:: O índice do banco de dados para o jobservice. O padrão é `1`.
+`redis.external.registryDatabaseIndex`:: O índice do banco de dados para o registry. O padrão é `2`.
+`redis.external.trivyAdapterIndex`:: O índice do banco de dados para o {trivy} adaptador. O padrão é `5`.
+`redis.external.harborDatabaseIndex`:: O índice do banco de dados para a {harbor} lógica de negócios diversa. O padrão é `0`.
+`redis.external.cacheLayerDatabaseIndex`:: O índice do banco de dados para a camada de cache de {harbor}. O padrão é `0`.
+`redis.external.username`:: O nome de usuário para {redis} autenticação externa. O padrão é `undefined`.
+`redis.external.password`:: A senha para {redis} autenticação externa. O padrão é `undefined`.
+`redis.external.existingSecret`:: O segredo existente contendo a {redis} senha. A chave deve ser `REDIS_PASSWORD`. O padrão é `""`.
+`redis.podAnnotations`:: As anotações a serem adicionadas ao {redis} pod. O padrão é `{}`.
+
+.Parâmetros do exportador
+`exporter.replicas`:: O número de réplicas a serem executadas. O padrão é `1`.
+`exporter.revisionHistoryLimit`:: O limite do histórico de revisões. O padrão é `10`.
+`exporter.podAnnotations`:: Anotações a serem adicionadas ao pod do exportador. O padrão é `{}`.
+`exporter.image.repository`:: O repositório para a imagem do exportador. O padrão é `private-registry/harbor-exporter`.
+`exporter.image.tag`:: A tag para a imagem do exportador. O padrão é `2.11`.
+`exporter.nodeSelector`:: Rótulos de nó para atribuição de pod. O padrão é `{}`.
+`exporter.tolerations`:: Tolerâncias para atribuição de pod. O padrão é `[]`.
+`exporter.affinity`:: Afinidades de nó ou pod. O padrão é `{}`.
+`exporter.topologySpreadConstraints`:: Restrições que definem como os Pods se espalham por domínios de falha, como regiões ou zonas de disponibilidade. O padrão é `[]`.
+`exporter.automountServiceAccountToken`:: Controla se deve montar o serviceAccountToken. O padrão é `false`.
+`exporter.cacheDuration`:: A duração do cache para informações coletadas pelo exportador. O padrão é `30`.
+`exporter.cacheCleanInterval`:: O intervalo de limpeza do cache para informações coletadas pelo exportador. O padrão é `14400`.
+`exporter.priorityClassName`:: A classe de prioridade para executar o pod. O padrão é `undefined`.
+
+.Parâmetros de métricas.
+`metrics.enabled`:: Habilita {harbor} métricas. O padrão é `false`.
+`metrics.core.path`:: O caminho da URL para métricas do kernel. O padrão é `/metrics`.
+`metrics.core.port`:: A porta para métricas do kernel. O padrão é `8001`.
+`metrics.registry.path`:: O caminho da URL para métricas do registry. O padrão é `/metrics`.
+`metrics.registry.port`:: A porta para métricas do registry. O padrão é `8001`.
+`metrics.exporter.path`:: O caminho da URL para métricas do exportador. O padrão é `/metrics`.
+`metrics.exporter.port`:: A porta para métricas do exportador. O padrão é `8001`.
+`metrics.serviceMonitor.enabled`:: Habilita a criação de um {prometheus} ServiceMonitor (requer {prometheus} CRDs). O padrão é `false`.
+`metrics.serviceMonitor.additionalLabels`:: Rótulos adicionais a serem aplicados ao manifesto do ServiceMonitor. O padrão é `""`.
+`metrics.serviceMonitor.interval`:: O intervalo de coleta para métricas de {harbor}. O padrão é `""`.
+`metrics.serviceMonitor.metricRelabelings`:: As regras de reetiquetagem para métricas antes da ingestão. O padrão é `[]`.
+`metrics.serviceMonitor.relabelings`:: As regras de reetiquetagem para métricas antes da coleta. O padrão é `[]`.
+
+.Parâmetros de rastreamento
+`trace.enabled`:: Habilita a funcionalidade de rastreamento. O padrão é `false`.
+`trace.provider`:: O provedor de rastreamento (`jaeger` ou `otel`). A versão do Jaeger deve ser 1.26 ou superior. O padrão é `jaeger`.
+`trace.sample_rate`:: A taxa de amostragem para dados de rastreamento. `1` amostra 100%, `0.5` amostra 50%. O padrão é `1`.
+`trace.namespace`:: O namespace para diferenciar diferentes serviços de {harbor}.
+`trace.attributes`:: Um dicionário de chave-valor para atributos definidos pelo usuário na inicialização do provedor de rastreamento.
+`trace.jaeger.endpoint`:: O endpoint para rastreamento do Jaeger. O padrão é `\http://hostname:14268/api/traces`.
+`trace.jaeger.username`:: O nome de usuário para autenticação do Jaeger.
+`trace.jaeger.password`:: A senha para autenticação do Jaeger.
+`trace.jaeger.agent_host`:: O host do agente para o Jaeger.
+`trace.jaeger.agent_port`:: A porta do agente para o Jaeger. O padrão é `6831`.
+`trace.otel.endpoint`:: O endpoint para rastreamento de {otelemetry}. O padrão é `hostname:4318`.
+`trace.otel.url_path`:: O caminho da URL para {otelemetry}. O padrão é `/v1/traces`.
+`trace.otel.compression`:: Habilita a compressão para {otelemetry}. O padrão é `false`.
+`trace.otel.insecure`:: Estabelece uma conexão insegura para {otelemetry}. O padrão é `true`.
+`trace.otel.timeout`:: O tempo limite em segundos para {otelemetry}. O padrão é `10`.
+
+.Parâmetros de cache
+`cache.enabled`:: Habilita a camada de cache. O padrão é `false`.
+`cache.expireHours`:: O tempo de expiração em horas para a camada de cache. O padrão é `24`.

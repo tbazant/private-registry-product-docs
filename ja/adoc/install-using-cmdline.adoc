@@ -1,0 +1,145 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-deployment]
+== コマンドラインを使用したインストール
+
+:revdate: 2026-05-04
+:page-revdate: {revdate}
+
+以下の手順では、{productname}（{productnameshort}）を{kube}クラスターにデプロイする方法について説明します。
+
+[#pr-deployment-kube-secrets]
+=== {scc}から{kube}のシークレットを取得する
+{sregistry}から{productnameshort}のイメージをダウンロードしてインストールするには、{scc}（{scca}）のミラーリング資格情報を持つ{kube}のシークレットが必要です。
+{scca}から資格情報を取得するには、以下の手順に従ってください：
+
+. https://scc.suse.comで{scc}にアクセスし、ログインします。
+. 左のサイドバーからアクティブな{productnameshort}サブスクリプションを持つ組織を選択します。
+. 上部メニューから`Proxies`を選択します。資格情報は右上隅に表示されます。
+. パスワードを見るには、'目'アイコンをクリックします。
+. 取得したパスワードを含む`password.txt`ファイルを作成します。
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}head -1 ./password.txt | helm registry login registry.suse.com \
+  --username <PRIVATE_REGISTRY_USERNAME> --password-stdin
+----
+
+. {sregistry}のためのネームスペースを作成します。
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl create namespace <PRIVATE_REGISTRY_NAMESPACE>
+----
+
+. 以下のコマンドを実行して、{scca}から取得したミラーリング資格情報を{kube}シークレットとして保存します：
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl create secret docker-registry suse-registry \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+  --docker-server=registry.suse.com \
+  --docker-username=<PRIVATE_REGISTRY_USERNAME> \
+  --docker-password=$(head -1 ./password.txt)
+----
+
+. オプションで、TLS暗号化通信を使用するには、プライベートキーと証明書ファイルからTLSシークレットを作成します。
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl create secret tls suse-registry-tls \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+  --cert=<CERTIFICATE>.pem \
+  --key=<PRIVATE_KEY>.pem
+----
+
+[#pr-deployment-installing-and-running]
+=== {productnameshort}を使用して{helm}をインストールして実行する
+以下の手順では、{productnameshort}を使用して{helm}をインストールする方法について説明します。
+{helm}チャートデプロイメントのために、`<RELEASE_NAME>`をカスタムリリース名に置き換えます。
+
+. 取得した{sregistry}ミラーリング資格情報を使用して{scca}にログインします。
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}head -1 ./password.txt | helm registry login registry.suse.com \
+  --username <SUSE_REGISTRY_USERNAME> --password-stdin
+----
+
+. 最新の{productnameshort} {helm}チャートをインストールします。
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+----
++
+{productnameshort} {helm} チャートをインストールすると、次の出力が表示されます:
++
+[source,bash,subs="+attributes"]
+----
+NOTES:
+CHART VERSION: 1.1.6
+It may take several minutes for the SUSE Private Registry  1.1.2 deployment to complete.
+
+Once the deployment has finished, you will be able to open the SUSE Private Registry portal at https://core.harbor.domain
+
+To get the admin credentials, copy and run the following commands:
+
+echo Username: "admin"
+echo Password: $(kubectl get secret --namespace <PRIVATE_REGISTRY_NAMESPACE>-harbor-core <RELEASE_NAME> -o jsonpath="{.data.HARBOR_ADMIN_PASSWORD}" | base64 -d)
+----
++
+{helm} バージョン 4 では、インストールするチャートを指定するためにダイジェストを使用できます:
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm@sha256:<DIAGEST_OF_CHART_TO_INSTALL> \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+----
+
+[TIP]
+====
+* 管理者のパスワードを取得するには、次のコマンドを実行することもできます:
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl get secret \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+  --harbor-core <RELEASE_NAME> \
+  -o jsonpath="{.data.HARBOR_ADMIN_PASSWORD}" | base64 -d; echo
+----
+
+* '--wait=watcher' フラグを使用して kstatus ウォッチャーを利用することで、すべてのオブジェクトがインストールを完了する準備が整っていることを確認できます。
+ウォッチャーを使用すると、コマンドの実行に時間がかかる場合があります。
+====
+
+`suse_registry_override.yaml` ファイルからカスタム値でデフォルトのインストールを上書きするには、<<pr-helm-chart-override>> を参照してください。
+
+コマンドは、いくつかの関連するコンテナのデプロイを開始し、完了するまでに数分かかる場合があります。
+また、{productnameshort} ウェブポータルへの URL と管理者の資格情報を取得するためのコマンドを含むメッセージを表示します。
+
+[#pr-deployment-upgrading]
+=== {productnameshort}のアップグレード
+
+{helm} チャートのリリースを特定の新しいバージョンにアップグレードするには、次のコマンドを実行してください:
+
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm upgrade <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --version <NEW_VERSION_OF_HELM_CHART> \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+----
+
+ダイジェストは{helm}のバージョン 4 でのみ利用可能です。
+
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm update <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm@sha256:<DIAGEST_OF_CHART_TO_INSTALL> \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+----
+

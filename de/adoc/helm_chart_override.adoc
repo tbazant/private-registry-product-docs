@@ -1,0 +1,426 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-helm-chart-override]
+== Überschreiben des {productname} {helm} Charts
+:revdate: 2025-10-15
+:page-revdate: {revdate}
+
+Das {productname} ({productnameshort}) {helm} Chart wird mit Standardwerten geliefert.
+Sie können die Installation des {helm} Charts auf eine der folgenden Arten anpassen:
+
+* Fügen Sie spezifische Parameter zu den `--set` Flags in der `helm install` Befehlszeile hinzu, zum Beispiel:
+[source]
+$ helm install <RELEASE_NAME> \
+oci://registry.suse.com/private-registry/private-registry-helm \
+--namespace <PRIVATE_REGISTRY_NAMESPACE> \
+--set harborAdminPassword=<MY_PASSWORD> \
+--set externalURL=https://<PRIVATE_REGISTRY_FQDN> \
+--set expose.ingress.hosts.core=<PRIVATE_REGISTRY_FQDN>
+* Create a {suse} custom `suse_registry_override.yaml` file and pass it to the `--f` flag, for example:
+[source]
+  $ helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+  -f suse_registry_override.yaml
+
+[#pr-helm-chart-override-examples]
+=== Beispiele für {sregistry} {helm} Override-Dateien
+.Minimale Bereitstellung mit {ingress}
+[example]
+----
+expose:
+  type: ingress //<1>
+  ingress:
+    hosts:
+      core: <PRIVATE_REGISTRY_FQDN> //<2>
+
+externalURL: https://<PRIVATE_REGISTRY_FQDN> //<3>
+
+harborAdminPassword: "<MY_PASSWORD>" //<4>
+
+datenbank:
+  intern:
+    passwort: "<MY_PASSWORD_POSTGRESQL>"
+
+redis:
+  intern:
+   passwort: "<MY_PASSWORD_REDIS>"
+----
+[callouts]
+<1> Wie {sregistry} exponiert wird. Kann `ingress`, `loadBalancer`, `nodePort` oder `clusterIPhis` sein. Der Standardwert ist `ingress`.
+<2> Hostname für die interne Netzwerkkonfiguration des {kube}.
+<3> URL, unter der die {sregistry} Anwendung läuft. Es wird verwendet, um Links in der Benutzeroberfläche, Weiterleitungen und auch für API-Antworten zu generieren.
+<4> Das Administratorkennwort für die Anwendung.
+
+.Typische Bereitstellung mit `loadBalancer`
+[example]
+----
+expose:
+  type: loadBalancer //<1>
+  tls:
+    enabled: true
+    certSource: secret //<2>
+    secret:
+      secretName: <SECRET_NAME>
+
+    auto:
+      commonName: <PRIVATE_REGISTRY_FQDN> //<3>
+
+externalURL: https://<PRIVATE_REGISTRY_FQDN> //<4>
+
+harborAdminPassword: "<MY_PASSWORD>" //<5>
+
+datenbank:
+  intern:
+    passwort: "<MY_PASSWORD_POSTGRESQL>"
+
+redis:
+  intern:
+   passwort: "<MY_PASSWORD_REDIS>"
+----
+[callouts]
+<1> Wie {sregistry} exponiert wird. Kann `ingress`, `loadBalancer`, `nodePort` oder `clusterIP` sein. Der Standardwert ist `ingress`.
+<2> Kann `auto`, `secret` oder `none` sein. Je nach Option müssen möglicherweise zusätzliche Werte angegeben werden.
+<3> Bei Verwendung der TLS-Verschlüsselung muss dieses Feld mit dem `externalURL` Wert übereinstimmen.
+<4> URL, unter der die {sregistry} Anwendung läuft. Es wird verwendet, um Links in der Benutzeroberfläche, Weiterleitungen und auch für API-Antworten zu generieren.
+<5> Das Administratorkennwort für die Anwendung.
+
+[#pr-helm-chart-override-parameters]
+=== Überschreiben der {helm} Chart-Parameter und -Werte
+
+Die folgenden Tabellen listen alle Parameter mit Beschreibungen auf, die Sie verwenden können, um die Standardinstallationswerte zu überschreiben.
+
+.Globale Parameter
+`global.imageRegistry`:: Setzt ein globales Override für die Container-Image-Registry, die für alle Images verwendet wird.
+`global.imagePullSecrets`:: Setzt globale Pull-Secrets für den Zugriff auf die Container-Image-Registry.
+
+.Allgemeine Parameter
+`harborAdminPassword`:: Setzt das anfängliche Passwort für den {harbor} Administrator. Ändern Sie es nach der Bereitstellung im Portal. Der Standardwert ist `Harbor12345`.
+`externalURL`:: Gibt die externe URL für den `harbor-core` Dienst an. Der Standardwert ist `\https://core.harbor.domain`.
+`existingSecretAdminPasswordKey`:: Setzt den Schlüsselnamen im Geheimnis, das das Passwort des {harbor} Administrators enthält. Der Standardwert ist `HARBOR_ADMIN_PASSWORD`.
+`imagePullSecrets`:: Setzt die `imagePullSecrets` Namen für alle Bereitstellungen.
+`updateStrategy.type`:: Setzt die Aktualisierungsstrategie für Bereitstellungen mit persistenten Volumes. Akzeptiert `RollingUpdate` oder `Recreate`. Verwenden Sie `Recreate`, wenn RWM für Volumes nicht unterstützt wird. Der Standardwert ist `RollingUpdate`.
+`logLevel`:: Setzt das Protokollniveau für {harbor} Dienste. Akzeptiert `fatal`, `error`, `warn`, `info`, `debug` oder `trace`. Der Standardwert ist `debug`.
+`enableMigratehelmHook`:: Führt die Datenbank-Migrationsaufgabe über den {helm} Hook aus. Wenn `true`, trennt die Migrationsaufgabe von `harbor-core`. Der Standardwert ist `false`.
+`caSecretName`:: Gibt den geheimen Namen an, der den `ca.crt`-Schlüssel enthält.
+
+.Proxy-Parameter
+`proxy.httpProxy`:: Gibt die URL des HTTP-Proxy-Servers an. Der Standardwert ist `""`.
+`proxy.httpsProxy`:: Gibt die URL des HTTPS-Proxy-Servers an. Der Standardwert ist `""`.
+`proxy.noProxy`:: Legt URLs fest, die die Proxy-Konfiguration umgehen. Der Standardwert ist `127.0.0.1,localhost,.local,.internal`.
+`proxy.components`:: Legt Komponenten fest, die die Proxy-Konfiguration verwenden. Der Standardwert ist `["core","jobservice","trivy"]`.
+
+.Parameter freigeben
+`expose.type`:: Gibt den Typ der Dienstfreigabe an: `ingress`, `clusterIP`, `nodePort` oder `loadBalancer`. Der Standardwert ist `ingress`.
+`expose.tls.enabled`:: Aktiviert TLS. Der Standardwert ist `true`.
+`expose.tls.certSource`:: Legt die Quelle des TLS-Zertifikats als `auto`, `secret` oder `none` fest. Der Standardwert ist `auto`.
+`expose.tls.auto.commonName`:: Legt den allgemeinen Namen des Zertifikats fest, wenn der Typ nicht `ingress` ist.
+`expose.tls.secret.secretName`:: Gibt den Namen des Geheimnisses an, das `tls.crt` (Zertifikat) und `tls.key` (privater Schlüssel) enthält.
+`expose.ingress.hosts.core`:: Legt den {harbor}-Kernel-Service-Host in der {ingress}-Regel fest. Der Standardwert ist `core.harbor.domain`.
+`expose.ingress.controller`:: Legt den {ingress}-Controller-Typ fest. Unterstützt `default`, `gce`, `alb`, `f5-bigip` und `ncp`. Der Standardwert ist `default`.
+`expose.ingress.kubeVersionOverride`:: Überschreibt die {kube}-Version für {ingress}-Templating.
+`expose.ingress.annotations`:: Legt die {ingress}-Annotationen fest.
+`expose.ingress.labels`:: Legt die {ingress}-spezifischen Labels fest. Der Standardwert ist `{}`.
+`expose.clusterIP.name`:: Legt den Namen des ClusterIP-Dienstes fest. Der Standardwert ist `harbor`.
+`expose.clusterIP.annotations`:: Legt die Annotationen des ClusterIP-Dienstes fest. Der Standardwert ist `{}`.
+`expose.clusterIP.ports.httpPort`:: Legt den HTTP-Dienstport fest. Der Standardwert ist `80`.
+`expose.clusterIP.ports.httpsPort`:: Legt den HTTPS-Dienstport fest. Der Standardwert ist `443`.
+`expose.clusterIP.labels`:: Legt ClusterIP-spezifische Labels fest. Der Standardwert ist `{}`.
+`expose.nodePort.name`:: Legt den NodePort-Dienstnamen fest. Der Standardwert ist `harbor`.
+`expose.nodePort.ports.http.port`:: Legt den HTTP-Dienstport fest. Der Standardwert ist `80`.
+`expose.nodePort.ports.http.nodePort`:: Legt den HTTP-Nodeport fest. Der Standardwert ist `30002`.
+`expose.nodePort.ports.https.port`:: Legt den HTTPS-Dienstport fest. Der Standardwert ist `443`.
+`expose.nodePort.ports.https.nodePort`:: Legt den HTTPS-Nodeport fest. Der Standardwert ist `30003`.
+`expose.nodePort.annotations`:: Legt die Annotationen von NodePort fest.
+`expose.nodePort.labels`:: Legt NodePort-spezifische Labels fest. Der Standardwert ist `{}`.
+`expose.loadBalancer.name`:: Legt den Dienstnamen fest. Der Standardwert ist `harbor`.
+`expose.loadBalancer.IP`:: Legt die IP des LoadBalancers fest, wenn die IP-Zuweisung unterstützt wird. Der Standardwert ist `""`.
+`expose.loadBalancer.ports.httpPort`:: Legt den HTTP-Dienstport fest. Der Standardwert ist `80`.
+`expose.loadBalancer.ports.httpsPort`:: Legt den HTTPS-Dienstport fest. Der Standardwert ist `30002`.
+`expose.loadBalancer.annotations`:: Legt die Anmerkungen des LoadBalancers fest. Der Standardwert ist `{}`.
+`expose.loadBalancer.labels`:: Legt LoadBalancer-spezifische Labels fest. Der Standardwert ist `{}`.
+`expose.loadBalancer.sourceRanges`:: Spezifiziert IP-Adressbereiche für loadBalancerSourceRanges. Der Standardwert ist `[]`.
+
+[#helm-persistence-parameters]
+.Persistenzparameter
+`persistence.enabled`:: Aktiviert oder deaktiviert die Datenpersistenz. Der Standardwert ist `true`.
+`persistence.resourcePolicy`:: `keep` verhindert die Entfernung von PVCs während einer {helm} Löschoperation. Ein leerer Wert löscht PVCs nach der Chart-Löschung. Der Standardwert ist `keep`.
+`persistence.persistentVolumeClaim.registry.existingClaim`:: Der vorhandene PVC, der manuell erstellt werden muss, bevor die Bindung erfolgt. Erfordert eine subPath-Spezifikation, wenn der PVC mit anderen Komponenten geteilt wird.
+`persistence.persistentVolumeClaim.registry.storageClass`:: Der `storageClass`, der das Volume bereitstellt.
+`persistence.persistentVolumeClaim.registry.subPath`:: Der Unterpfad im Volume.
+`persistence.persistentVolumeClaim.registry.accessMode`:: Der Zugriffsmodus des Volumes. Der Standardwert ist `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.registry.size`:: Die Größe des Volumes. Der Standardwert ist `5Gi`.
+`persistence.persistentVolumeClaim.registry.annotations`:: Die Annotationen des Volumes.
+`persistence.persistentVolumeClaim.jobservice.jobLog.existingClaim`:: Der vorhandene PVC, der manuell erstellt werden muss, bevor die Bindung erfolgt. Erfordert eine subPath-Spezifikation, wenn der PVC mit anderen Komponenten geteilt wird.
+`persistence.persistentVolumeClaim.jobservice.jobLog.storageClass`:: Der `storageClass`, der das Volume bereitstellt.
+`persistence.persistentVolumeClaim.jobservice.jobLog.subPath`:: Der Unterpfad im Volume.
+`persistence.persistentVolumeClaim.jobservice.jobLog.accessMode`:: Der Zugriffsmodus des Volumes. Der Standardwert ist `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.jobservice.jobLog.size`:: Die Größe des Volumes. Der Standardwert ist `1Gi`.
+`persistence.persistentVolumeClaim.jobservice.jobLog.annotations`:: Die Annotationen des Volumes.
+`persistence.persistentVolumeClaim.database.existingClaim`:: Der vorhandene PVC, der manuell erstellt werden muss, bevor die Bindung erfolgt. Erfordert eine subPath-Spezifikation, wenn der PVC mit anderen Komponenten geteilt wird.
+`persistence.persistentVolumeClaim.database.storageClass`:: Der `storageClass`, der das Volume bereitstellt.
+`persistence.persistentVolumeClaim.database.subPath`:: Der Unterpfad im Volume. Wird ignoriert, wenn eine externe Datenbank verwendet wird.
+`persistence.persistentVolumeClaim.database.accessMode`:: Der Zugriffsmodus des Volumes. Wird ignoriert, wenn eine externe Datenbank verwendet wird. Der Standardwert ist `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.database.size`:: Die Größe des Volumes. Wird ignoriert, wenn eine externe Datenbank verwendet wird. Der Standardwert ist `1Gi`.
+`persistence.persistentVolumeClaim.database.annotations`:: Die Annotationen des Volumes.
+`persistence.persistentVolumeClaim.redis.existingClaim`:: Der vorhandene PVC, der manuell erstellt werden muss, bevor die Bindung erfolgt. Erfordert eine subPath-Spezifikation, wenn der PVC mit anderen Komponenten geteilt wird.
+`persistence.persistentVolumeClaim.redis.storageClass`:: Der `storageClass`, der das Volume bereitstellt. Verwendet die Standard-StorageClass, wenn nicht angegeben.
+`persistence.persistentVolumeClaim.redis.subPath`:: Der Unterpfad im Volume. Wird ignoriert, wenn ein externes {valkey} verwendet wird.
+`persistence.persistentVolumeClaim.redis.accessMode`:: Der Zugriffsmodus des Volumes. Wird ignoriert, wenn ein externes {valkey} verwendet wird. Der Standardwert ist `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.redis.size`:: Die Größe des Volumes. Wird ignoriert, wenn ein externes {valkey} verwendet wird. Der Standardwert ist `1Gi`.
+`persistence.persistentVolumeClaim.redis.annotations`:: Die Annotationen des Volumes.
+`persistence.persistentVolumeClaim.trivy.existingClaim`:: Der vorhandene PVC, der manuell erstellt werden muss, bevor die Bindung erfolgt. Erfordert eine subPath-Spezifikation, wenn der PVC mit anderen Komponenten geteilt wird.
+`persistence.persistentVolumeClaim.trivy.storageClass`:: Der `storageClass`, der das Volume bereitstellt. Verwendet die Standard-StorageClass, wenn nicht angegeben.
+`persistence.persistentVolumeClaim.trivy.subPath`:: Der Unterpfad im Volume.
+`persistence.persistentVolumeClaim.trivy.accessMode`:: Der Zugriffsmodus des Volumes. Der Standardwert ist `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.trivy.size`:: Die Größe des Volumes. Der Standardwert ist `1Gi`.
+`persistence.persistentVolumeClaim.trivy.annotations`:: Die Annotationen des Volumes.
+`persistence.imageChartStorage.disableredirect`:: Steuert das Redirect-Management von Content-Backends. Auf true setzen, um Redirects für nicht unterstützte Backends zu deaktivieren. Der Standardwert ist `false`.
+`persistence.imageChartStorage.caBundleSecretName`:: Der Name des Secrets, das das CA-Bundle für selbstsignierte Speicherzertifikate enthält.
+`persistence.imageChartStorage.type`:: Der Speichertyp für Bilder und Diagramme: `filesystem`, `azure`, `gcs`, `s3`, `swift` oder `oss`. Der Standardwert ist `filesystem`.
+`persistence.imageChartStorage.gcs.existingSecret`:: Der Name des vorhandenen Secrets, das den JSON-Schlüssel des GCS-Dienstkontos enthält. Der Schlüssel muss `gcs-key.json` sein. Der Standardwert ist `""`.
+`persistence.imageChartStorage.gcs.useWorkloadIdentity`:: Aktiviert die Nutzung der Workload-Identität in einem GKE-Cluster. Der Standardwert ist `false`.
+
+.{nginx} Parameter
+[options="header"]
+`nginx.image.repository`:: Das Image-Repository für {nginx}. Der Standardwert ist `private-registry/harbor-nginx`.
+`nginx.image.tag`:: Der Image-Tag für {nginx}.
+`nginx.replicas`:: Die Anzahl der auszuführenden Replikate. Der Standardwert ist `1`.
+`nginx.revisionHistoryLimit`:: Die maximale Anzahl alter `ReplicaSet` Revisionen, die beibehalten werden sollen. Der Standardwert ist `10`.
+`nginx.resources`:: Die Rechenressourcen, die für den Container zugewiesen sind. Der Standardwert ist `undefined`.
+`nginx.automountServiceAccountToken`:: Steuert die automatische Montage des Tokens des Dienstkontos. Der Standardwert ist `false`.
+`nginx.nodeSelector`:: Die Knoten-Labels, die für die Pod-Zuweisung verwendet werden. Der Standardwert ist `{}`.
+`nginx.tolerations`:: Die Toleranzen für die Pod-Zuweisung. Der Standardwert ist `[]`.
+`nginx.affinity`:: Die Regeln für die Affinität von Knoten oder Pods. Der Standardwert ist `{}`.
+`nginx.topologySpreadConstraints`:: Die Regeln für die Verteilung von Pods über Ausfallbereiche wie Regionen oder Verfügbarkeitszonen. Der Standardwert ist `[]`.
+`nginx.podAnnotations`:: Die Annotationen, die dem {nginx} Pod hinzugefügt wurden. Der Standardwert ist `{}`.
+
+
+.Portalparameter
+`portal.image.repository`:: Repository-Standort für das Portalbild. Der Standardwert ist `private-registry/harbor-portal`.
+`portal.image.tag`:: Tag für das Portalbild. Der Standardwert ist `3.11`.
+`portal.replicas`:: Anzahl der zu erstellenden Replikate. Der Standardwert ist `1`.
+`portal.revisionHistoryLimit`:: Maximale Anzahl alter `ReplicaSet` Revisionen, die beibehalten werden sollen. Der Standardwert ist `10`.
+`portal.resources`:: Ressourcen, die dem Container zugewiesen sind. Der Standardwert ist `undefined`.
+`portal.automountServiceAccountToken`:: Steuert die automatische Montage des Tokens des Dienstkontos. Der Standardwert ist `false`.
+`portal.nodeSelector`:: Knoten-Labels, die für die Pod-Zuweisung verwendet werden. Der Standardwert ist `{}`.
+`portal.tolerations`:: Toleranzen, die für die Pod-Zuweisung verwendet werden. Der Standardwert ist `[]`.
+`portal.affinity`:: Einstellungen zur Affinität von Knoten und Pods. Der Standardwert ist `{}`.
+`portal.topologySpreadConstraints`:: Definiert die Verteilung von Pods über Ausfallbereiche wie Regionen oder Verfügbarkeitszonen. Der Standardwert ist `[]`.
+`portal.podAnnotations`:: Annotationen, die dem Portal-Pod hinzugefügt wurden. Der Standardwert ist `{}`.
+`portal.serviceAnnotations`:: Annotationen, die dem Portal-Dienst hinzugefügt wurden. Der Standardwert ist `{}`.
+`portal.priorityClassName`:: Prioritätsklassenname für die Pod-Ausführung.
+`portal.initContainers`:: Init-Container, die vor dem Start des Controller-Containers ausgeführt werden sollen. Der Standardwert ist `[]`.
+
+
+.Kernelparameter
+`core.image.repository`:: Das Repository für das {harbor} Kernel-Image. Der Standardwert ist `private-registry/harbor-core`.
+`core.image.tag`:: Das Tag für das {harbor} Kernel-Image. Der Standardwert ist `2.11`.
+`core.replicas`:: Die Anzahl der Replikate. Der Standardwert ist `1`.
+`core.revisionHistoryLimit`:: Das Limit der Revisionshistorie. Der Standardwert ist `10`.
+`core.startupProbe.initialDelaySeconds`:: Die anfängliche Verzögerung in Sekunden für die Startprobe. Der Standardwert ist `10`.
+`core.resources`:: Die Ressourcen, die für den Container zugewiesen werden sollen. Der Standardwert ist `undefined`.
+`core.automountServiceAccountToken`:: Montiert das Token des Dienstkontos. Der Standardwert ist `false`.
+`core.nodeSelector`:: Die Knotenlabels für die Pod-Zuweisung. Der Standardwert ist `{}`.
+`core.tolerations`:: Die Toleranzen für die Pod-Zuweisung. Der Standardwert ist `[]`.
+`core.affinity`:: Die Knoten- oder Pod-Affinitäten. Der Standardwert ist `{}`.
+`core.topologySpreadConstraints`:: Die Einschränkungen, die definieren, wie Pods über Fehlerdomänen wie Regionen oder Verfügbarkeitszonen verteilt werden. Der Standardwert ist `[]`.
+`core.podAnnotations`:: Die Annotationen, die zum Kernel-Pod hinzugefügt werden sollen. Der Standardwert ist `{}`.
+`core.serviceAnnotations`:: Die Annotationen, die zum Kernel-Dienst hinzugefügt werden sollen. Der Standardwert ist `{}`.
+`core.configureUserSettings`:: Ein JSON-String in der Umgebungsvariable CONFIG_OVERWRITE_JSON zur Konfiguration der Benutzereinstellungen.
+`core.quotaUpdateProvider`:: Der Anbieter zur Aktualisierung der Projektquoten-Nutzung, Optionen sind `redis` oder `db`. Der Standardwert ist `db`.
+`core.secret`:: Wird verwendet, wenn der Kernelserver mit anderen Komponenten kommuniziert.
+`core.secretName`:: Der Name eines {kube} Geheimnisses, um Ihr eigenes TLS-Zertifikat und den privaten Schlüssel für die Token-Verschlüsselung oder -Entschlüsselung zu verwenden.
+`core.tokenKey`:: Der im PEM-Format vorliegende RSA-Private-Key, der zur Signierung von Dienst-Token verwendet wird.
+`core.tokenCert`:: Das im PEM-Format vorliegende Zertifikat, das von `core.tokenKey` signiert wurde und zur Validierung von Dienst-Token verwendet wird.
+`core.xsrfKey`:: Der XSRF-Schlüssel, der automatisch generiert wird, wenn er nicht angegeben ist.
+`core.priorityClassName`:: Die Prioritätsklasse, unter der der Pod ausgeführt werden soll.
+`core.artifactPullAsyncFlushDuration`:: Die Zeitdauer für die asynchrone Aktualisierung der Artefakt-Pull-Zeit und der Repository-Pull-Anzahl.
+`core.gdpr.deleteUser`:: Aktiviert die DSGVO-konforme Benutzerlöschung. Der Standardwert ist `false`.
+`core.gdpr.auditLogsCompliant`:: Aktiviert die DSGVO-Konformität für Audit-Protokolle, indem der Benutzername in seinen CRC32-Wert geändert wird, wenn dieser Benutzer aus dem System gelöscht wurde. Der Standardwert ist `false`.
+`core.initContainers`:: Die Init-Container, die vor dem Start des Containers des Controllers ausgeführt werden sollen. Der Standardwert ist `[]`.
+
+
+.Jobservice-Parameter
+`jobservice.image.repository`:: Das Repository für das Jobservice-Image. Der Standardwert ist `private-registry/harbor-jobservice`.
+`jobservice.image.tag`:: Das Tag für das Jobservice-Image. Der Standardwert ist `2.11`.
+`jobservice.replicas`:: Die Anzahl der Replikate. Der Standardwert ist `1`.
+`jobservice.revisionHistoryLimit`:: Das Limit der Revisionshistorie. Der Standardwert ist `10`.
+`jobservice.maxJobWorkers`:: Die maximale Anzahl an Jobarbeitern. Der Standardwert ist `10`.
+`jobservice.jobLoggers`:: Die Logger für Jobs: `file`, `database` oder `stdout`. Der Standardwert ist `[file]`.
+`jobservice.loggerSweeperDuration`:: Die Dauer in Tagen, um Jobprotokolle aufzubewahren (wird ignoriert, wenn `jobLoggers` auf `stdout` gesetzt ist). Der Standardwert ist `14`.
+`jobservice.notification.webhook_job_max_retry`:: Die maximale Anzahl an Wiederholungen für das Senden von Webhook-Benachrichtigungen. Der Standardwert ist `3`.
+`jobservice.notification.webhook_job_http_client_timeout`:: Der HTTP-Client-Timeout in Sekunden für das Senden von Webhook-Benachrichtigungen. Der Standardwert ist `3`.
+`jobservice.reaper.max_update_hours`:: Die maximale Zeit in Stunden, um auf den Abschluss einer Aufgabe zu warten. Wenn die Aufgabe nach den angegebenen Stunden nicht abgeschlossen ist, wird sie als Fehler markiert, läuft jedoch weiter. Der Standardwert ist `24`.
+`jobservice.reaper.max_dangling_hours`:: Die maximale Zeit in Stunden für die Ausführung im laufenden Zustand, ohne dass eine neue Aufgabe erstellt wird. Der Standardwert ist `168`.
+`jobservice.resources`:: Die [Ressourcen], die für den Container zugewiesen werden sollen. Der Standardwert ist `undefined`.
+`jobservice.automountServiceAccountToken`:: Montiert das Token des Dienstkontos. Der Standardwert ist `false`.
+`jobservice.nodeSelector`:: Die Knotenlabels für die Pod-Zuweisung. Der Standardwert ist `{}`.
+`jobservice.tolerations`:: Die Toleranzen für die Pod-Zuweisung. Der Standardwert ist `[]`.
+`jobservice.affinity`:: Die Knoten- oder Pod-Affinitäten. Der Standardwert ist `{}`.
+`jobservice.topologySpreadConstraints`:: Die Einschränkungen, die definieren, wie Pods über Fehlerdomänen wie Regionen oder Verfügbarkeitszonen verteilt werden. Der Standardwert ist `[]`.
+`jobservice.podAnnotations`:: Die Annotationen, die dem Jobservice-Pod hinzugefügt werden sollen. Der Standardwert ist `{}`.
+`jobservice.priorityClassName`:: Die Prioritätsklasse, unter der der Pod ausgeführt werden soll.
+`jobservice.secret`:: Das Geheimnis, das verwendet wird, wenn der Jobdienst mit anderen Komponenten kommuniziert. Wenn kein geheimer Schlüssel angegeben ist, wird {helm} generiert. Muss eine Zeichenkette von 16 Zeichen sein.
+`jobservice.initContainers`:: Die Init-Container, die vor dem Start des Containers des Controllers ausgeführt werden sollen. Der Standardwert ist `[]`.
+
+
+.Registrierungsparameter
+`registry.registry.image.repository`:: Der Speicherort des Registrierungsimages. Der Standardwert ist `private-registry/harbor-registry`.
+`registry.registry.image.tag`:: Das Tag für das Registrierungsimage. Der Standardwert ist `2.11`.
+`registry.registry.resources`:: Die [Ressourcen], die für den Container zugewiesen werden sollen. Der Standardwert ist `undefined`.
+`registry.controller.image.repository`:: Der Speicherort des Registrierungscontroller-Images. Der Standardwert ist `private-registry/harbor-registryctl`.
+`registry.controller.image.tag`:: Das Tag für das Registrierungscontroller-Image. Der Standardwert ist `2.11`.
+`registry.controller.resources`:: Die [Ressourcen], die für den Container zugewiesen werden sollen. Der Standardwert ist `undefined`.
+`registry.replicas`:: Die Anzahl der Replikatinstanzen. Der Standardwert ist `1`.
+`registry.revisionHistoryLimit`:: Die maximale Anzahl von Revisionen, die in der Historie beibehalten werden sollen. Der Standardwert ist `10`.
+`registry.nodeSelector`:: Die Knotenlabels für die Pod-Zuweisung. Der Standardwert ist `{}`.
+`registry.automountServiceAccountToken`:: Steuert, ob das Token des Dienstkontos gemountet werden soll. Der Standardwert ist `false`.
+`registry.tolerations`:: Die Toleranzen für die Pod-Zuweisung. Der Standardwert ist `[]`.
+`registry.affinity`:: Die Knoten- oder Pod-Affinitäten. Der Standardwert ist `{}`.
+`registry.topologySpreadConstraints`:: Die Einschränkungen, die die Verteilung von Pods über Fehlerdomänen wie Regionen oder Verfügbarkeitszonen definieren. Der Standardwert ist `[]`.
+`registry.middleware`:: Middleware-Unterstützung für ein CDN zwischen dem Backend-Speicher und dem {docker} Pull-Empfänger.
+`registry.podAnnotations`:: Die Annotationen, die dem Registrierungs-Pod hinzugefügt werden sollen. Der Standardwert ist `{}`.
+`registry.priorityClassName`:: Die Prioritätsklasse für die Pod-Ausführung.
+`registry.secret`:: Das Geheimnis, das den Upload-Zustand zwischen dem Client und dem Registrierungs-Speicher-Backend sichert.
+`registry.credentials.username`:: Der Benutzername für den internen Zugriff auf das Registrierungs-Backend von {harbor} Kernel. Der Standardwert ist `harbor_registry_user`.
+`registry.credentials.password`:: Das Passwort für den internen Zugriff auf das Registrierungs-Backend von {harbor} Kernel. Der Standardwert ist `harbor_registry_password`.
+`registry.credentials.existingSecret`:: Ein vorhandenes Geheimnis, das das Passwort für den Zugriff auf die Registrierungsinstanz im htpasswd-Authentifizierungsmodus enthält. Der Standardwert ist `""`.
+`registry.credentials.htpasswdString`:: Der Login und das Passwort im htpasswd-Zeichenfolgenformat. Schließt `registry.credentials.username` und `registry.credentials.password` aus. Der Standardwert ist `undefined`.
+`registry.relativeurls`:: Gibt relative URLs in den Location-Headern zurück, wenn dies wahr ist. Erforderlich, wenn {harbor} hinter einem Reverse-Proxy steht. Der Standardwert ist `false`.
+`registry.upload_purging.enabled`:: Ermöglicht das Löschen von Upload-Verzeichnissen. Der Standardwert ist `true`.
+`registry.upload_purging.age`:: Der Zeitraum, nach dem Dateien in Upload-Verzeichnissen entfernt werden, standardmäßig eine Woche. Der Standardwert ist `168h`.
+`registry.upload_purging.interval`:: Das Zeitintervall zwischen Löschvorgängen. Der Standardwert ist `24h`.
+`registry.upload_purging.dryrun`:: Aktiviert den Trockenlaufmodus für das Löschen von Uploads. Der Standardwert ist `false`.
+`registry.initContainers`:: Die Init-Container, die vor dem Start des Containers des Controllers ausgeführt werden. Der Standardwert ist `[]`.
+
+
+.{trivy} Parameter
+`trivy.enabled`:: Aktiviert oder deaktiviert den {trivy} Scanner. Der Standardwert ist `true`.
+`trivy.image.repository`:: Das Repository für das {trivy} Adapter-Image. Der Standardwert ist `private-registry/harbor-trivy-adapter`.
+`trivy.image.tag`:: Das Tag für das {trivy} Adapter-Image. Der Standardwert ist `2.11`.
+`trivy.resources`:: Die Ressourcen, die für den {trivy} Adapter-Container zugewiesen werden sollen. Der Standardwert ist `undefined`.
+`trivy.automountServiceAccountToken`:: Ob das Token des Dienstkontos gemountet werden soll. Der Standardwert ist `false`.
+`trivy.replicas`:: Die Anzahl der Pod-Replikate. Der Standardwert ist `1`.
+`trivy.debugMode`:: Aktiviert den {trivy} Debug-Modus zur Fehlersuche. Der Standardwert ist `false`.
+`trivy.vulnType`:: Durch Kommas getrennte Liste von Schwachstellentypen (`os` und `library`). Der Standardwert ist `os,library`.
+`trivy.severity`:: Durch Kommas getrennte Liste von Schweregraden von Schwachstellen, die überprüft werden sollen. Der Standardwert ist `UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`.
+`trivy.ignoreUnfixed`:: Zeigt nur behobene Schwachstellen an. Der Standardwert ist `false`.
+`trivy.insecure`:: Überspringt die Überprüfung des Registrierungszertifikats. Der Standardwert ist `false`.
+`trivy.skipUpdate`:: Deaktiviert die {trivy} Datenbankdownloads von GitHub. Der Standardwert ist `false`.
+`trivy.skipJavaDBUpdate`:: Erfordert den manuellen Download der `trivy-java.db` Datei, wenn aktiviert. Der Standardwert ist `false`.
+`trivy.offlineScan`:: Verhindert, dass {trivy} API-Anfragen sendet, um Abhängigkeiten zu identifizieren. Der Standardwert ist `false`.
+`trivy.securityCheck`:: Durch Kommas getrennte Liste von Sicherheitsproblemen, die erkannt werden sollen. Der Standardwert ist `vuln`.
+`trivy.timeout`:: Die Dauer, die auf den Abschluss des Scans gewartet werden soll. Der Standardwert ist `5m0s`.
+`trivy.gitHubToken`:: Das für den Datenbankdownload erforderliche GitHub-Zugriffstoken. Der Standardwert ist `undefined`.
+`trivy.priorityClassName`:: Die Prioritätsklasse für die Ausführung des Pods. Der Standardwert ist `undefined`.
+`trivy.topologySpreadConstraints`:: Definiert die Verteilungseinschränkungen für Pods über Fehlerdomänen. Der Standardwert ist `undefined`.
+`trivy.initContainers`:: Liste der Init-Container, die vor dem Start des Hauptcontainers ausgeführt werden sollen. Der Standardwert ist `[]`.
+
+.Datenbankparameter
+`database.type`:: Der Datenbanktyp. Auf `external` setzen, wenn eine externe Datenbank verwendet wird. Der Standardwert ist `internal`.
+`database.internal.image.repository`:: Das Repository für das Datenbank-Image. Der Standardwert ist `private-registry/harbor-db`.
+`database.internal.image.tag`:: Das Tag für das Datenbank-Image. Der Standardwert ist `2.11`.
+`database.internal.password`:: Das Passwort für die interne Datenbank. Der Standardwert ist `changeit`.
+`database.internal.shmSizeLimit`:: Das Limit für die Größe des gemeinsamen Speichers für {postgresql} (typischerweise 50 % des Container-Speicherlimits). Der Standardwert ist `512Mi`.
+`database.internal.resources`:: Die für den Datenbankcontainer zugewiesenen Ressourcen. Der Standardwert ist `undefined`.
+`database.internal.automountServiceAccountToken`:: Steuert, ob das Token des Dienstkontos montiert wird. Der Standardwert ist `false`.
+`database.internal.initContainer.migrator.resources`:: Die für den Init-Container des Datenbankmigrators zugewiesenen Ressourcen. Der Standardwert ist `undefined`.
+`database.internal.initContainer.permissions.resources`:: Die für den Init-Container der Datenbankberechtigungen zugewiesenen Ressourcen. Der Standardwert ist `undefined`.
+`database.internal.nodeSelector`:: Die Knotenlabels für die Pod-Zuweisung. Der Standardwert ist `{}`.
+`database.internal.tolerations`:: Die Toleranzen für die Pod-Zuweisung. Der Standardwert ist `[]`.
+`database.internal.affinity`:: Die Einstellungen für die Knoten- oder Pod-Affinität. Der Standardwert ist `{}`.
+`database.internal.priorityClassName`:: Die Prioritätsklasse für die Ausführung des Pods. Der Standardwert ist `undefined`.
+`database.internal.livenessProbe.timeoutSeconds`:: Das Timeout in Sekunden für die Liveness-Prüfung (Bereich: 1-5s). Der Standardwert ist `1`.
+`database.internal.readinessProbe.timeoutSeconds`:: Der Timeout in Sekunden für die Readiness-Prüfung (Bereich: 1-5s). Der Standardwert ist `1`.
+`database.internal.extrInitContainers`:: Zusätzliche Init-Container, die vor dem Start des Datenbankcontainers ausgeführt werden. Der Standardwert ist `[]`.
+`database.external.host`:: Der Hostname der externen Datenbank. Der Standardwert ist `192.168.0.1`.
+`database.external.port`:: Die Portnummer der externen Datenbank. Der Standardwert ist `5432`.
+`database.external.username`:: Der Benutzername für die externe Datenbank. Der Standardwert ist `user`.
+`database.external.password`:: Das Passwort für die externe Datenbank. Der Standardwert ist `password`.
+`database.external.coreDatabase`:: Der Datenbankname, der vom Kernelservice verwendet wird. Der Standardwert ist `registry`.
+`database.external.existingSecret`:: Das vorhandene Secret, das das Datenbankpasswort enthält. Der Schlüssel muss `password` sein. Der Standardwert ist `""`.
+`database.external.sslmode`:: Die Verbindungsart für die externe Datenbank. Optionen: `require`, `verify-full`, `verify-ca`, `disable`. Der Standardwert ist `disable`.
+`database.maxIdleConns`:: Die maximale Anzahl an inaktiven Verbindungen im Pool (0 oder weniger bedeutet, dass keine inaktiven Verbindungen behalten werden). Der Standardwert ist `50`.
+`database.maxOpenConns`:: Die maximale Anzahl an offenen Verbindungen zur Datenbank (0 oder weniger bedeutet unbegrenzt). Der Standardwert ist `100`.
+`database.podAnnotations`:: Die Annotationen, die zum Datenbank-Pod hinzugefügt werden sollen. Der Standardwert ist `{}`.
+
+
+.{valkey} / {redis} Parameter
+`redis.type`:: Der {redis} Implementierungstyp. Auf `external` setzen für externe {redis}. Der Standardwert ist `internal`.
+`redis.internal.image.repository`:: Das Repository für das {redis} Image. Der Standardwert ist `private-registry/harbor-redis`.
+`redis.internal.image.tag`:: Das Tag für das {redis} Image. Der Standardwert ist `7.2`.
+`redis.internal.resources`:: Die Ressourcen, die für den {redis} Container zugewiesen sind. Der Standardwert ist `undefined`.
+`redis.internal.automountServiceAccountToken`:: Steuert, ob das Token des Dienstkontos montiert wird. Der Standardwert ist `false`.
+`redis.internal.nodeSelector`:: Die Knotenlabels für die Pod-Zuweisung. Der Standardwert ist `{}`.
+`redis.internal.tolerations`:: Die Toleranzen für die Pod-Zuweisung. Der Standardwert ist `[]`.
+`redis.internal.affinity`:: Die Einstellungen für die Knoten- oder Pod-Affinität. Der Standardwert ist `{}`.
+`redis.internal.priorityClassName`:: Die Prioritätsklasse für das Ausführen des {redis} Pods. Der Standardwert ist `undefined`.
+`redis.internal.jobserviceDatabaseIndex`:: Der Datenbankindex für den Jobservice. Der Standardwert ist `1`.
+`redis.internal.registryDatabaseIndex`:: Der Datenbankindex für die Registry. Der Standardwert ist `2`.
+`redis.internal.trivyAdapterIndex`:: Der Datenbankindex für den {trivy} Adapter. Der Standardwert ist `5`.
+`redis.internal.harborDatabaseIndex`:: Der Datenbankindex für die verschiedenen {harbor} Geschäftslogik. Der Standardwert ist `0`.
+`redis.internal.cacheLayerDatabaseIndex`:: Der Datenbankindex für die Cache-Schicht von {harbor}. Der Standardwert ist `0`.
+`redis.internal.initContainers`:: Die Init-Container, die vor dem Start des {redis} Containers ausgeführt werden. Der Standardwert ist `[]`.
+`redis.external.addr`:: Die Adresse der externen {redis} Instanz. Der Standardwert ist `192.168.0.2:6379`.
+`redis.external.sentinelMasterSet`:: Der Name des {redis} Sentinel Master Sets (sofern zutreffend). Der Standardwert ist `undefined`.
+`redis.external.coreDatabaseIndex`:: Der Datenbankindex für den Kernel. Der Standardwert ist `0`.
+`redis.external.jobserviceDatabaseIndex`:: Der Datenbankindex für den Jobservice. Der Standardwert ist `1`.
+`redis.external.registryDatabaseIndex`:: Der Datenbankindex für die Registry. Der Standardwert ist `2`.
+`redis.external.trivyAdapterIndex`:: Der Datenbankindex für den {trivy} Adapter. Der Standardwert ist `5`.
+`redis.external.harborDatabaseIndex`:: Der Datenbankindex für die verschiedenen {harbor} Geschäftslogik. Der Standardwert ist `0`.
+`redis.external.cacheLayerDatabaseIndex`:: Der Datenbankindex für die Cache-Schicht von {harbor}. Der Standardwert ist `0`.
+`redis.external.username`:: Der Benutzername für die externe {redis} Authentifizierung. Der Standardwert ist `undefined`.
+`redis.external.password`:: Das Passwort für die externe {redis} Authentifizierung. Der Standardwert ist `undefined`.
+`redis.external.existingSecret`:: Das vorhandene Geheimnis, das das {redis} Passwort enthält. Der Schlüssel muss `REDIS_PASSWORD` sein. Der Standardwert ist `""`.
+`redis.podAnnotations`:: Die Annotationen, die zum {redis} Pod hinzugefügt werden sollen. Der Standardwert ist `{}`.
+
+.Exporter-Parameter
+`exporter.replicas`:: Die Anzahl der zu betreibenden Replikate. Der Standardwert ist `1`.
+`exporter.revisionHistoryLimit`:: Das Limit der Versionshistorie. Der Standardwert ist `10`.
+`exporter.podAnnotations`:: Annotationen, die zum Exporter-Pod hinzugefügt werden sollen. Der Standardwert ist `{}`.
+`exporter.image.repository`:: Das Repository für das Exporter-Image. Der Standardwert ist `private-registry/harbor-exporter`.
+`exporter.image.tag`:: Das Tag für das Exporter-Image. Der Standardwert ist `2.11`.
+`exporter.nodeSelector`:: Knotenbeschriftungen für die Pod-Zuweisung. Der Standardwert ist `{}`.
+`exporter.tolerations`:: Tolerations für die Pod-Zuweisung. Der Standardwert ist `[]`.
+`exporter.affinity`:: Knoten- oder Pod-Affinitäten. Der Standardwert ist `{}`.
+`exporter.topologySpreadConstraints`:: Einschränkungen, die festlegen, wie Pods über Ausfalldomänen wie Regionen oder Verfügbarkeitszonen verteilt werden. Der Standardwert ist `[]`.
+`exporter.automountServiceAccountToken`:: Steuert, ob das serviceAccountToken gemountet werden soll. Der Standardwert ist `false`.
+`exporter.cacheDuration`:: Die Cache-Dauer für Informationen, die vom Exporter gesammelt werden. Der Standardwert ist `30`.
+`exporter.cacheCleanInterval`:: Das Intervall zur Cache-Reinigung für Informationen, die vom Exporter gesammelt werden. Der Standardwert ist `14400`.
+`exporter.priorityClassName`:: Die Prioritätsklasse, unter der der Pod ausgeführt werden soll. Der Standardwert ist `undefined`.
+
+.Metrikparameter
+`metrics.enabled`:: Aktiviert {harbor} Metriken. Der Standardwert ist `false`.
+`metrics.core.path`:: Der URL-Pfad für Kernelmetriken. Der Standardwert ist `/metrics`.
+`metrics.core.port`:: Der Port für Kernelmetriken. Der Standardwert ist `8001`.
+`metrics.registry.path`:: Der URL-Pfad für Registrierungsmetriken. Der Standardwert ist `/metrics`.
+`metrics.registry.port`:: Der Port für Registrierungsmetriken. Der Standardwert ist `8001`.
+`metrics.exporter.path`:: Der URL-Pfad für Exporter-Metriken. Der Standardwert ist `/metrics`.
+`metrics.exporter.port`:: Der Port für Exporter-Metriken. Der Standardwert ist `8001`.
+`metrics.serviceMonitor.enabled`:: Aktiviert die Erstellung eines {prometheus} ServiceMonitors (benötigt {prometheus} CRDs). Der Standardwert ist `false`.
+`metrics.serviceMonitor.additionalLabels`:: Zusätzliche Labels, die auf das ServiceMonitor-Manifest angewendet werden sollen. Der Standardwert ist `""`.
+`metrics.serviceMonitor.interval`:: Das Abfrageintervall für {harbor} Metriken. Der Standardwert ist `""`.
+`metrics.serviceMonitor.metricRelabelings`:: Die Relabeling-Regeln für Metriken vor der Eingabe. Der Standardwert ist `[]`.
+`metrics.serviceMonitor.relabelings`:: Die Relabeling-Regeln für Metriken vor dem Scraping. Der Standardwert ist `[]`.
+
+.Trace-Parameter
+`trace.enabled`:: Aktiviert die Trace-Funktionalität. Der Standardwert ist `false`.
+`trace.provider`:: Der Trace-Anbieter (`jaeger` oder `otel`). Die Jaeger-Version sollte 1.26+ sein. Der Standardwert ist `jaeger`.
+`trace.sample_rate`:: Die Abtastrate für Trace-Daten. `1` samplet 100 %, `0.5` samplet 50 %. Der Standardwert ist `1`.
+`trace.namespace`:: Der Namespace zur Unterscheidung verschiedener {harbor}-Dienste.
+`trace.attributes`:: Ein Schlüssel-Wert-Wörterbuch für benutzerdefinierte Attribute bei der Initialisierung des Trace-Anbieters.
+`trace.jaeger.endpoint`:: Der Endpunkt für Jaeger-Tracing. Der Standardwert ist `\http://hostname:14268/api/traces`.
+`trace.jaeger.username`:: Der Benutzername für die Jaeger-Authentifizierung.
+`trace.jaeger.password`:: Das Passwort für die Jaeger-Authentifizierung.
+`trace.jaeger.agent_host`:: Der Agenten-Host für Jaeger.
+`trace.jaeger.agent_port`:: Der Agenten-Port für Jaeger. Der Standardwert ist `6831`.
+`trace.otel.endpoint`:: Der Endpunkt für {otelemetry}-Tracing. Der Standardwert ist `hostname:4318`.
+`trace.otel.url_path`:: Der Pfad für {otelemetry}. Der Standardwert ist `/v1/traces`.
+`trace.otel.compression`:: Aktiviert die Kompression für {otelemetry}. Der Standardwert ist `false`.
+`trace.otel.insecure`:: Stellt eine unsichere Verbindung für {otelemetry} her. Der Standardwert ist `true`.
+`trace.otel.timeout`:: Die Zeitüberschreitung in Sekunden für {otelemetry}. Der Standardwert ist `10`.
+
+.Cache-Parameter
+`cache.enabled`:: Aktiviert die Cache-Schicht. Der Standardwert ist `false`.
+`cache.expireHours`:: Die Ablaufzeit in Stunden für die Cache-Schicht. Der Standardwert ist `24`.

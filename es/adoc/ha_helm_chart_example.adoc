@@ -1,0 +1,81 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-ha-helm-chart-example]
+== Ejemplo de un gráfico de {productnameshort} configuración de HA {helm}
+:revdate: 2025-09-01
+:page-revdate: {revdate}
+
+El siguiente archivo de valores de ejemplo ilustra los parámetros que son necesarios para la configuración mínima de {productnameshort} HA.
+
+[source,yaml]
+----
+expose:
+  ingress:
+    hosts:
+      core: core.harbor.domain //<1>
+
+externalURL: https://core.harbor.domain //<2>
+
+portal:
+  replicas: 2 //<3>
+
+core:
+  replicas: 2 //<3>
+
+jobservice:
+  replicas: 2 //<3>
+
+registry:
+  replicas: 2 //<3>
+
+database:
+  type: external
+  external: // <4>
+    host: "192.168.0.1"
+    port: "5432"
+    username: "user"
+    password: "password"
+    coreDatabase: "registry"
+    existingSecret: "" //<5>
+    sslmode: "disable" //<6>
+
+redis:
+  type: external
+  external: //<7>
+    addr: "192.168.0.2:6379" //<8>
+    sentinelMasterSet: "" //<9>
+    coreDatabaseIndex: "0" //<10>
+    jobserviceDatabaseIndex: "1"
+    registryDatabaseIndex: "2"
+    trivyAdapterIndex: "5"
+    harborDatabaseIndex: "6" //<11>
+    cacheLayerDatabaseIndex: "7"//<12>
+    username: "" //<13>
+    password: ""
+    existingSecret: "" //<14>
+
+persistence:
+  enabled: true //<15>
+----
+[callouts]
+<1> Nombre de host del servicio del kernel en la regla {ingress}.
+<2> La URL externa para el servicio harbor-core.
+<3> Número de réplicas a crear. Especificar dos o más.
+<4> Rellene los detalles de conexión a la base de datos en la sección `external`.
+<5> Si se utiliza un secreto existente, el valor debe ser `password`.
+<6> Acepta uno de los siguientes valores:
+  inhabilitar:: No use SSL.
+  requerir:: Utilice siempre SSL y omita la verificación.
+  verify-ca:: Utilice siempre SSL. Verifique que el certificado presentado por el servidor fue firmado por una CA de confianza.
+  verificar-completo:: Utilice siempre SSL. Verifique que el certificado presentado por el servidor fue firmado por una CA de confianza y que el nombre de host del servidor coincide con el del certificado.
+<7> Rellene la información de conexión en la sección `external`.
+<8> Soporta redis y redis+sentinel. +
+  La dirección para redis es `<redis_host>:<redis_port>`. +
+  La dirección para redis+sentinel es `<sentinel1_host>:<sentinel1_port>`,`<sentinel2_host>:<sentinel2_port>`...
+<9> El nombre del conjunto de {valkey} instancias a monitorizar. Debe configurarse para soportar redis+sentinel.
+<10> Debe ser `0` ya que la biblioteca que utiliza Harbor no soporta configuraciones.
+<11> Opcional. Por defecto es `0` pero se puede configurar a `6`.
+<12> Opcional. Por defecto es `0` pero se puede configurar a `7`.
+<13> Si está vacío, se autentica contra el usuario por defecto.
+<14> Si se utiliza, la clave debe ser <REDIS_PASSWORD>.
+<15> Para almacenar todas las imágenes, metadatos y escaneos, asegúrese de que los ajustes xref:helm-persistence-parameters[relacionados con la persistencia] estén correctamente configurados.

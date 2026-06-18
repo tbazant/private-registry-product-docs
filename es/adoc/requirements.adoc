@@ -1,0 +1,47 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-requirements]
+== Requisitos
+
+:revdate: 2026-06-05
+:page-revdate: {revdate}
+
+
+Esta sección describe los requisitos mínimos de la plataforma y el tamaño de producción recomendado para {productname}.
+
+[#pr-deployment-prerequisites]
+=== Requisitos previos
+* Un clúster {kube} versión 1.20 o superior
+* {helm} Versión 3.2.0 o superior
+* Soporte para el aprovisionador de Volumen Persistente (PV) en su infraestructura
+* Una suscripción activa para {productname}
+
+[#pr-deployment-hardware-sizing]
+=== Recomendaciones de hardware y tamaño
+Utiliza estos valores como punto de partida para la producción. Ajusta según la política de retención, la rotación de imágenes, la concurrencia de escaneo y el tráfico de replicación.
+==== Línea base del clúster
+
+[cols="1,1",options="header"]
+|===
+| Ámbito | Punto de partida recomendado
+| Nodos de trabajo | Mínimo 3 nodos de trabajo
+| Forma del nodo | Mínimo 4 vCPU y 16 GiB de RAM por nodo
+| Forma de nodo preferida | 8 vCPU y 32 GiB de RAM por nodo para una mayor concurrencia en el escaneo y en el push
+|===
+
+Estas recomendaciones se alinean con la guía de Rancher para RKE2 Kubernetes.
+Para más detalles, consulta https://ranchermanager.docs.rancher.com/getting-started/installation-and-upgrade/installation-requirements#rke2-kubernetes[Requisitos de instalación de RKE2 Kubernetes].
+
+==== Línea base de almacenamiento persistente
+
+[cols="1,1,1",options="header"]
+|===
+| Componente | Tamaño de gráfico predeterminado | Tamaño inicial recomendado
+| Datos del registro | 5 Gi | 500 Gi a 1 Ti
+| Caché y base de datos de Trivy | 5 Gi | 20 Gi a 50 Gi
+| Registros de Jobservice | 1 Gi | 10 Gi
+| PostgreSQL interno (si se utiliza) | 1 Gi | 20 Gi como mínimo
+| Valkey interno (si se utiliza) | 1 Gi | 20 Gi como mínimo
+|===
+
+Los valores predeterminados del gráfico están orientados a la instalación y no deben utilizarse como valores de capacidad de producción a largo plazo.

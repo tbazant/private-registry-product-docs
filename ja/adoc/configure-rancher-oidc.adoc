@@ -1,0 +1,103 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-configure-rancher-oidc]
+== {ranchera}をOIDCアイデンティティプロバイダーとして構成します。
+
+:revdate: 2026-05-20
+:page-revdate: {revdate}
+
+このガイドでは、{ranchera}をOIDCアイデンティティプロバイダーとして機能させる方法を説明します。これにより、ユーザーは{productname}の資格情報を使用して、{ranchera}などの外部アプリケーションに認証できます。
+
+
+[#pr-configure-rancher-oidc-enable-flag]
+=== 手順1:oidc-provider機能フラグを有効にします。
+
+. 管理者として{ranchera}のUIにログインします。
+. 左上の3本線メニュー(☰)をクリックし、menu:グローバル設定[機能フラグ]に移動します。
+. `oidc-provider`フラグを見つけ、*その他のアクション*アイコン(⋮)をクリックし、*有効化*をクリックします。
+
+image::activate-oidc-rancher.png[をOIDCアイデンティティプロバイダーとして構成する{ranchera}, width=100%]
+
+
+[#pr-configure-rancher-oidc-create-client]
+=== ステップ2:OIDCClientリソースを作成します。
+
+{ranchera}は、ダウンストリームアプリケーションを登録するために`OIDCClient`カスタムリソースを使用します。
+
+. 次の内容を含む`rancher-oidc-client.yaml`という名前のファイルを作成します:
++
+[source,yaml]
+----
+apiVersion: management.cattle.io/v3
+kind: OIDCClient
+metadata:
+  name: spr-client
+spec:
+  tokenExpirationSeconds: 600
+  refreshTokenExpirationSeconds: 3600
+  redirectURIs:
+    # Replace this with the actual callback URL of your SUSE private registry instance
+    - "https://<SUSE_PRIVATE_REGISTR_URL>/c/oidc/callback"
+----
+
+. {ranchera}が実行されているクラスターにファイルを適用します:
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl apply -f rancher-oidc-client.yaml
+----
+
+[#pr-configure-rancher-oidc-retrieve-credentials]
+=== ステップ3:クライアントIDとシークレットを取得します。
+
+リソースが作成されると、{ranchera}は自動的に`clientID`を埋め、`clientSecret`を含む{kube}シークレットをプロビジョニングします。
+
+. 生成されたクライアントIDを取得します:
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl get oidcclient spr-client -o jsonpath="{.status.clientID}"
+----
+
+. クライアントシークレットを取得します。前のステップで取得したIDを`<YOUR_CLIENT_ID>`に置き換えることを忘れないでください:
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl get secret <YOUR_CLIENT_ID>
+  -n cattle-oidc-client-secrets
+  -o jsonpath="{.data.client-secret-1}" | base64 -d
+----
+
+[#pr-configure-rancher-oidc-configure-spr]
+=== ステップ4:{productname}を構成します。
+
+{ranchera}をOIDCプロバイダーとして使用するように{productname}を構成できます。値を{helm}経由で渡します。
+`values-oidc.yaml`の構成で`core.configureUserSettings`ブロックを使用します。
+
+以下は、上記で取得した資格情報を使用して、あなたの{ranchera}エンドポイントを利用した例のブロックです。
+`<YOUR_CLIENT_ID>`と`<YOUR_CLIENT_SECRET>`の値を置き換えてください。
+
+[source,yaml]
+----
+core:
+  configureUserSettings: |
+    {
+      "auth_mode": "oidc_auth",
+      "oidc_name": "Rancher",
+      "oidc_endpoint": "<RANCHER_URL>/oidc",
+      "oidc_client_id": "<YOUR_CLIENT_ID>",
+      "oidc_client_secret": "<YOUR_CLIENT_SECRET>",
+      "oidc_scope": "openid,profile,offline_access",
+      "oidc_verify_cert": false,
+      "oidc_auto_onboard": true,
+      "oidc_user_claim": "preferred_username",
+      "oidc_groups_claim": "groups",
+      "oidc_admin_group": "spr-admins"
+    }
+----
+
+[NOTE]
+====
+あなたのインスタンスが自己署名証明書を使用している場合、`oidc_verify_cert`は`false`に設定されていることを確認してください。{ranchera}
+`oidc_admin_group`を指定することにより、`spr-admins`グループに属する任意の{ranchera}ユーザーは、{productname}でシステム管理者権限を自動的に付与されます。
+====

@@ -1,0 +1,53 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-introduction]
+== Introduction
+:revdate: 2025-09-01
+:page-revdate: {revdate}
+
+[#pr-what-is-spr]
+=== Qu'est-ce que {productname} ?
+{productname} ({productnameshort}) est un registre de conteneurs sur site. {productnameshort} est conçu pour les clients {suse} ayant besoin d'un registre de conteneurs qui fonctionne bien avec d'autres services et produits {suse}.
+
+[#pr-what-are-pr-benefits]
+=== Quels sont les avantages de {productname}{nbsp}?
+{productnameshort} est basé sur le projet {harbor} et inclut toutes ses fonctionnalités principales ainsi que des avantages supplémentaires. Par exemple :
+
+* *Registre de conteneurs sur site.* {productnameshort} est un registre de conteneurs hébergé localement avec accès aux services de registre {suse} en ligne.
+* *Sécurité.* {productnameshort} offre des considérations de sécurité pour les environnements conteneurisés.
+Il inclut l'authentification, l'autorisation et l'analyse des vulnérabilités.
+* *Flexibilité de déploiement.* Vous pouvez installer {productnameshort} sur un environnement {kube} tel que {rke2}.
+Vous pouvez également déployer {productnameshort} avec une configuration de haute disponibilité.
+* *Gestion des utilisateurs.* {productnameshort} fournit un mécanisme d'authentification et d'autorisation avec un contrôle d'accès en fonction du rôle (RBAC).
+* *Interface utilisateur.* En plus d'une interface de ligne de commande, vous pouvez administrer {productnameshort} via une interface utilisateur Web.
+
+[#pr-how-does-pr-work]
+=== Comment fonctionne {productname} ?
+{productnameshort} est livré sous forme de conteneurs _Open Container Initiative_ (OCI) et est prévu pour être déployé sur un cluster {kube}. {productnameshort} se compose des conteneurs suivants{nbsp}:
+
+* **harbor-core:** le composant principal du registre {harbor}, responsable de la gestion des fonctionnalités de base telles que la gestion des projets, des dépôts et des interactions avec les utilisateurs.
+* **harbor-db:** le conteneur de base de données qui stocke toutes les métadonnées liées aux images, aux utilisateurs et aux configurations pour le registre {harbor}.
+* **harbor-jobservice:** un service qui gère les tâches en arrière-plan, telles que la réplication d'images et les tâches planifiées, garantissant un traitement efficace des opérations au sein du registre.
+* **harbor-nginx:** le proxy inverse et l'équilibreur de charge qui dirige les requêtes entrantes vers les services {harbor} appropriés, fournissant un point d'entrée unique pour les utilisateurs.
+* **harbor-portal:** l'interface utilisateur Web qui permet aux utilisateurs d'interagir avec le registre {harbor}, de gérer les images et de configurer les paramètres via une interface graphique.
+* **harbor-registry:** le conteneur qui sert de véritable back-end de stockage d'images, gérant le stockage et la récupération des images de conteneurs.
+* **harbor-registryctl:** un outil de ligne de commande pour gérer le registre {harbor}, permettant aux utilisateurs d'effectuer des tâches administratives et des configurations directement depuis le terminal.
+* **harbor-trivy-adapter:** un conteneur qui intègre le scanner de vulnérabilités {trivy} avec {harbor}, permettant un scan de sécurité automatisé des images de conteneurs pour détecter les vulnérabilités.
+* **harbor-exporter:** le conteneur qui exporte les métriques {harbor} dans un format pouvant être collecté par {prometheus} pour la surveillance et l'observabilité.
+* **harbor-valkey:** un magasin de clés-valeurs en mémoire.
+
+Après le déploiement, vous pouvez vous connecter via l'interface utilisateur Web.
+Après une authentification et une autorisation réussies, vous pouvez configurer plusieurs aspects du produit, par exemple{nbsp}:
+
+* Configurer *les paramètres globaux*, par exemple pour définir le registre en mode lecture seule ou limiter les autorisations de création de projets.
+* Sélectionnez une méthode d'*authentification*.
+* Ajoutez des utilisateurs lorsque vous êtes en mode d'authentification par base de données et attribuez le *rôle d'administrateur du système* à d'autres utilisateurs.
+* Appliquez des *quotas* de ressources aux projets.
+* Configurez la *réplication* des images entre les instances {productnameshort}.
+
+[#pr-for-more-information]
+=== informations supplémentaires
+Référez-vous aux sources suivantes pour obtenir plus de détails{nbsp}:
+
+* La page d'accueil du projet {harbor} est à https://goharbor.io/.
+* L'utilisation de {harbor} est détaillée dans https://goharbor.io/docs.

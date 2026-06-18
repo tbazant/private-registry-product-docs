@@ -1,0 +1,142 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-faq]
+== Häufig gestellte Fragen
+
+:revdate: 2026-05-28
+:page-revdate: {revdate}
+
+[#product-overview-and-differentiators]
+=== Produktübersicht und Differenzierungsmerkmale
+
+[.qanda]
+Welche Art von Abonnement benötigen Kunden für {productname}?::
+Es ist in der {ranchera} Suite enthalten und wird als Add-on für {ranchera} Prime angeboten.
++
+Die Preise für das Add-on sind die gleichen wie für andere Add-ons.
+
+Was sind die Differenzierungsmerkmale von {harbor} (aus der Anwendungssammlung oder von Upstream)?::
+Verwenden Sie {productname}, wenn Sie benötigen:
+* Level 3 (L3) Support für Produktprobleme.
+* Einen vorhersehbaren Veröffentlichungszyklus.
+* Gepatchte Images für bekannte Schwachstellen. Upstream {harbor} Images von {dhub} enthalten oft link:https://artifacthub.io/packages/helm/harbor/harbor?modal=security-report[zahlreiche nicht gepatchte Schwachstellen].
++
+Im Laufe der Zeit wird {suse} auch sofort einsatzbereite Integrationen mit {ranchera} hinzufügen und die Funktionsanfragen von Kunden priorisieren.
+
+Müssen Kunden die gleiche Anzahl an Add-on {productname} Abonnements wie {ranchera} Prime Abonnements kaufen?::
+Ja, genau wie bei anderen Add-ons wie {suse} Security. Ein zusätzlicher Vorteil des {productname} Abonnementmodells ist, dass es Kunden ermöglicht, so viele Implementierungen durchzuführen, wie sie benötigen.
+
+[#relationship-with-upstream-harbor]
+=== Beziehung zu Upstream {harbor}
+
+[.qanda]
+Wie stimmt der Veröffentlichungszyklus mit Upstream {harbor} überein?::
+Der Veröffentlichungszyklus von {productname} ist unabhängig vom Veröffentlichungszyklus von Upstream {harbor}.
++
+Bei der Veröffentlichung neuer Versionen von {productname} strebt {suse} an, die neueste Version des Upstream {harbor} Projekts einzuschließen, die den Qualitäts- und Wartungsanforderungen von SUSE entspricht.
+
+Werden Sie Migrationsüberlegungen für Kunden veröffentlichen, die {harbor} aus anderen Quellen betreiben?::
+Nicht zu diesem Zeitpunkt.
+
+[#deployment-and-installation]
+=== Implementierung und Installation
+
+[.qanda]
+Unterstützen Sie die Installation von {productname} über {compose}?::
+Nein. Sie müssen {productname} mit dem {helm} Chart installieren und konfigurieren. Dieses Chart wird auch für das fortlaufende Management (Betrieb ab Tag 2) verwendet und kann in GitOps-Workflows integriert werden.
+
+Empfehlen Sie Bereitstellung im lokalen ({ranchera} Manager) Cluster?::
+Nein. SUSE empfiehlt, {productname} in einem Downstream-Cluster bereitzustellen. Dies macht das Registry für andere Downstream-Cluster zugänglich, die Images konsumieren müssen.
+
+Was sind die besten Praktiken für die Bereitstellung in einer Hochverfügbarkeitsumgebung (HA)?::
+Für HA sollten Sie {productname} nicht im {ranchera} Management-Cluster bereitstellen, um Ressourcenkonflikte zu vermeiden.
++
+Sie können {productname} in einem dedizierten Cluster oder in einem oder mehreren Ihrer Anwendungscluster bereitstellen.
++
+Für Anleitungen siehe xref:pr-deployment-ha[]. Bitte beachten Sie, dass Sie Ihre eigenen HA-Komponenten für die Postgres-Datenbank, den Valkey- oder Redis-Server und den {ingress} Controller bereitstellen müssen. Diese Komponenten werden nicht durch das {productname} {helm} Chart bereitgestellt und werden von {suse} nicht unterstützt.
+
+// Will there be guidance for Edge deployments?::
+// TBD.
+
+Wird das {productname} {helm} Chart irgendwann zur Anwendungssammlung hinzugefügt?::
+Ja, SUSE plant, das Chart in Zukunft dort zu veröffentlichen.
+
+Liefern Sie einen {kube}-Operator aus?::
+{productname} wird nicht mit einem dedizierten Operator ausgeliefert. Es wird mit seinem {helm} Chart installiert und verwaltet, das in GitOps integriert werden kann. {suse} bewertet weiterhin das Management auf Basis von Operatoren für zukünftige Versionen.
+
+[#security-scanning-and-signing]
+=== Sicherheit, Scannen und Signieren
+
+[.qanda]
+Integrieren Sie ein Signierungswerkzeug in {productname}?::
+{productname} signiert Bilder nicht selbst, kann jedoch Open Container Initiative (OCI)-kompatible Signaturen speichern, verteilen und verifizieren.
++
+Ein weit verbreitetes Tool ist `cosign`, das Bilder signieren und die Signaturen in {productname} speichern kann.
++
+`cosign`-Signaturen, die an Bilder angehängt sind, sind im {productname}-Portal einsehbar und herunterladbar.
+
+Ist es möglich, Bilder mit Notary oder Cosign zur Genehmigung während des Bereitstellungsprozesses zu signieren?::
+{productname} kann `cosign`-Signaturen speichern, verteilen und verifizieren.
++
+{productname} selbst signiert keine Bilder. Sie müssen Bilder während ihres Erstellungsprozesses signieren und dann die Signatur zusammen mit dem Bild im Registry hochladen.
++
+Notary ist nicht in {productname} enthalten oder wird nicht unterstützt.
+
+Werden Bilder nur mit Trivy auf Common Vulnerabilities and Exposures (CVEs) gescannt, oder kann auch {suse} Security (NeuVector) verwendet werden?::
+Bilder werden mit Trivy gescannt, das sofort einsatzbereit ist. {suse} Security kann zusätzlich zu oder als Ersatz für Trivy hinzugefügt werden.
+
+Ist es möglich, ClamAV oder ähnliche Malware-Scans durchzuführen?::
+Standardmäßig scannt {productname} Bilder mit Trivy. Sie können auch {suse} Security (NeuVector) als Scanner konfigurieren.
+
+Wird im Pull-Through-Cache-Szenario das Schwachstellenkriterien durchgesetzt?::
+Ja, aber mit einer bekannten Einschränkung. Aufgrund von Upstream {harbor} link:https://github.com/goharbor/harbor/issues/16218[Problemen] werden Schwachstellenkriterien beim ersten Abruf eines Bildes nicht durchgesetzt, da der Scan noch nicht abgeschlossen ist.
++
+Für eine vollständige Abdeckung kombinieren Sie {productname} mit {suse} Security link:https://open-docs.neuvector.com/policy/admission#admission-control-criteria[Admission-Kontrollen].
+
+Sind die Containerbilder von {productname} gehärtet?::
+Ja. Die Containerbilder für {productname} sind gehärtet. Sie basieren auf SUSE Linux Enterprise Base Container Images (SLE BCI) und werden im gleichen unternehmensgerechten SUSE Build Service erstellt, der auch für SUSE Linux Enterprise verwendet wird. Dies gewährleistet eine sichere Lieferkette. Die Images sind ebenfalls signiert, und SUSE veröffentlicht ihre Supply-chain Levels for Software Artifacts (SLSA) Attestierungen.
+
+Sind die Images von {productname} signiert? Wie?::
+Die Images sind mit `cosign` signiert. Sie können diese überprüfen, indem Sie den im PEM-Format veröffentlichten Signaturschlüssel unter link:https://www.suse.com/support/kb/doc/?id=000021411[KB 000021411] speichern.
++
+Führen Sie dann beispielsweise Folgendes aus:
++
+[source,bash]
+----
+cosign verify --key container-key.pem registry.suse.com/private-registry/harbor-portal:latest
+----
+
+[#replication-and-sync]
+=== Replikation und Synchronisierung
+
+[.qanda]
+Gibt es einen Plan für ein Plugin zur Synchronisierung mit {sregistry} und {sappco}?::
+Ja, eine solche Funktion ist geplant.
+
+// When replicating from {sappco}, are SBOMs also replicated?::
+// TBD.
+
+Bietet {productname} eine Multi-Site-Replikation an?::
+Ja. {productname} unterstützt die Multi-Site-, richtlinienbasierte Bildreplikation (Pull und Push). Sie können Images über mehrere {productname} Implementierungen hinweg synchronisieren, während jede Registry unabhängig bleibt.
+
+[#features-and-integration-with-ranchera]
+=== Funktionen und Integration mit {ranchera}
+
+[.qanda]
+Gibt es einen Plan, das Registry innerhalb von {ranchera} mit einer Erweiterung zu integrieren?::
+Ja. {suse} plant eine tiefere Integration mit {ranchera} Prime und anderen Angeboten. Zukünftige Verbesserungen, die in Betracht gezogen werden, umfassen die Integration von Single Sign-On (SSO), vereinfachtes setup für {ssecurity} Scanner und das Spiegeln von Anwendungssammlungen, Überwachung mit {sobservability} und eine {ranchera} UI-Erweiterung.
+
+Wird {suse} das Registry zum Schulungskatalog hinzufügen?::
+Das ist noch nicht geplant. Wenn Sie an Schulungsmaterial interessiert sind, kontaktieren Sie {suse}, um Möglichkeiten mit dem Schulungsteam zu besprechen.
+
+[#support-and-documentation]
+=== Support und Dokumentation
+
+[.qanda]
+Gibt es eine Support-Richtlinie für {productname}?::
+Ja. Die Support-Richtlinie von {productname} ist die gleiche wie die von jedem anderen {ranchera} Prime Add-on.
+
+Wenn die {productname} Dokumentation Informationen vermissen lässt, kann ich dann auf die offizielle {harbor} Dokumentation verweisen?::
+Ja. Da {productname} auf {harbor} basiert, ist die offizielle {harbor} Dokumentation eine nützliche Ressource. Für Funktionen, die spezifisch für die SUSE-Version sind, verweisen Sie auf die {productname} Dokumentation.
++
+Die xref:pr-relnotes[] geben an, welche Upstream-{harbor}-Version Ihrer {productname}-Version entspricht.

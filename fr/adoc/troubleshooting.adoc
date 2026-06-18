@@ -1,0 +1,28 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-troubleshooting]
+== Dépannage
+:revdate: 2026-02-23
+:page-revdate: {revdate}
+
+Cette section fournit des solutions aux problèmes que vous pourriez rencontrer lors du déploiement ou de l'utilisation de {productname}.
+
+[.qanda]
+Je rencontre l'erreur `401 unauthorized` lorsque j'essaie d'installer {productname}.::
+La version complète du message d'erreur est la suivante{nbsp}:
++
+[source]
+----
+Error: INSTALLATION FAILED:
+GET "https://registry.suse.com/v2/private-registry/private-registry-helm/tags/list":
+response status code 401: unauthorized:
+authentication required:
+[map[Action:pull Class: Name:private-registry/private-registry-helm Type:repository]]
+----
++
+Pour installer et utiliser {productname}, vous avez besoin des éléments suivants{nbsp}:
+
+* Un abonnement éligible qui inclut ce produit, tel qu'un abonnement {ranchera} Suite ou un abonnement produit complémentaire {productname}.
+  Si vous n'avez pas d'abonnement éligible, contactez votre {suse} représentant.
+* Connectez-vous à {sregistry} avec {helm} en utilisant les identifiants de mise en miroir {scca} de l'organisation {scca} qui détient l'abonnement.
+  Pour plus d'informations, reportez-vous à xref:pr-deployment-kube-secrets[].

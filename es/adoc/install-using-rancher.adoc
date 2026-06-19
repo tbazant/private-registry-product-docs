@@ -1,0 +1,59 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-install-rancher]
+== Instalación utilizando la interfaz {ranchera}
+
+:revdate: 2026-05-05
+:page-revdate: {revdate}
+
+Para instalar {productname} utilizando la interfaz {ranchera}, debes cumplir con los siguientes requisitos y seguir los pasos a continuación.
+
+[#pr-install-rancher-requirements]
+=== ¿Qué requisitos necesito cumplir?
+
+* Un entorno con un cluster {kube} soportado en funcionamiento y {ranchera} desplegado.
+Consulta los requisitos de instalación de link:https://documentation.suse.com/cloudnative/rancher-manager/latest/en/installation-and-upgrade/requirements/requirements.html[{ranchera}] para más detalles.
+* Credenciales de {sregistry} para una cuenta con una suscripción a {productname} (un nombre de usuario y una contraseña/token).
+Consulta link:https://documentation.suse.com/en-us/cloudnative/suse-private-registry/html/private-registry/pr-deployment.html#pr-deployment-kube-secrets[Obteniendo secretos de {kube} desde {scca}] para más detalles.
+
+
+[#pr-install-rancher-procedure]
+=== ¿Cuáles son los pasos para instalar {productname} utilizando la interfaz {ranchera}?
+
+.*PASO 1*: Indica a {ranchera} dónde se encuentra el repositorio {productname} para buscar el chart de instalación.
+. Inicia sesión en {ranchera}.
+. Haz clic en el menú de tres líneas (☰) en la esquina superior izquierda, selecciona menu:Gestión de Clústeres[], y haz clic en el nombre de tu clúster, que suele ser `local`.
+. Desde el menú de la izquierda, selecciona menu:Apps[Repositorios].
+. Haz clic en el botón btn:[Crear] en la parte superior derecha y completa el formulario que se abre:
+  .. *Destino*: Selecciona btn:[Repositorio OCI].
+  .. *Nombre*: Introduce un nombre para el repositorio, como `SUSE Private Registry`.
+  .. *Descripción*: Opcionalmente, añade una descripción del repositorio.
+  .. *URL del Host del Repositorio OCI*: Enter \`oci://registry.suse.com/private-registry/private-registry-helm`.
+  .. *Autenticación*: Cambia a `Create an HTTP Basic Auth Secret` e introduce el nombre de usuario y la contraseña de las credenciales del registro.
+. Confirma con btn:[Crear].
+
+.Añadiendo un {productname} repositorio
+image::spr-rancher-add-repo.png[Una captura de pantalla que muestra cómo añadir un {productname} repositorio a {ranchera}, width=100%]
+
+.*PASO 2*: Crea un secreto para acceder a las imágenes en el \`registry.suse.com`.
+. Haz clic en el menú de tres líneas (☰) en la esquina superior izquierda y selecciona menu:Gestión de Clústeres[].
+. Cambia al clúster al que deseas añadir el secreto y haz clic en btn:[Explorar].
+. Para navegar a la gestión de secretos, selecciona menu:Almacenamiento[Secretos] y haz clic en btn:[Crear] en la parte superior derecha.
+. Selecciona el secreto btn:[HTTP Basic Auth] y luego el espacio de nombres `private-registry`.
+. Introduce `suse-registry` como el nombre del secreto.
+. Rellena los campos `username` y `password` con las credenciales {suse} obtenidas en xref:pr-install-rancher-requirements[].
+
+.Añadiendo {productname} secretos
+image::spr-rancher-add-secrets.png[Una captura de pantalla que muestra cómo añadir {productname} secretos a {ranchera}, width=100%]
+
+.*PASO 3*: Instala el {helm} chart.
+. Desde el menú principal de la izquierda, selecciona menu:Apps[Charts].
+. Introduce el nombre del {productname} repositorio asignado en el cuadro de búsqueda. Por ejemplo, `SUSE Private Registry`.
+Si no aparece en la lista, haz clic en btn:[Actualizar todos los repositorios].
+. Haz clic en el chart y visualiza el `README.md`.
+. Opcionalmente, puedes personalizar los valores de instalación.
+Puedes hacer clic en las secciones del lado izquierdo del panel `Edit Options` para ver todos los valores que puedes configurar, o editar los valores directamente en el archivo YAML del chart.
+. En la esquina superior derecha, haz clic en btn:[Instalar esta versión].
+
+.Instalación {productname}
+image::spr-rancher-install.png[Una captura de pantalla que muestra la pantalla de instalación de {productname} en {ranchera}, width=100%]

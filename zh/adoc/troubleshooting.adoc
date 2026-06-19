@@ -1,0 +1,28 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-troubleshooting]
+== 查错
+:revdate: 2026-02-23
+:page-revdate: {revdate}
+
+本节提供您在部署或使用{productname}时可能遇到的问题的解决方案。
+
+[.qanda]
+我在尝试安装{productname}时遇到了`401 unauthorized`错误。::
+错误消息的完整版本如下：
++
+[source]
+----
+Error: INSTALLATION FAILED:
+GET "https://registry.suse.com/v2/private-registry/private-registry-helm/tags/list":
+response status code 401: unauthorized:
+authentication required:
+[map[Action:pull Class: Name:private-registry/private-registry-helm Type:repository]]
+----
++
+要安装和使用{productname}，您需要以下内容：
+
+* 包含此产品的合格订阅，例如{ranchera}套件订阅或{productname}附加产品订阅。
+  如果您没有合格的订阅，请联系您的{suse}代表。
+* 请使用持有订阅的{sregistry}组织的{helm}镜像凭据，通过{scca}登录到{scca}。
+  有关更多详细信息，请参见xref:pr-deployment-kube-secrets[]。

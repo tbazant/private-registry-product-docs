@@ -1,0 +1,59 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-install-rancher]
+== Installation über die {ranchera} Benutzeroberfläche
+
+:revdate: 2026-05-05
+:page-revdate: {revdate}
+
+Um {productname} über die {ranchera} Benutzeroberfläche zu installieren, müssen Sie die folgenden Anforderungen erfüllen und die untenstehenden Schritte befolgen.
+
+[#pr-install-rancher-requirements]
+=== Welche Anforderungen muss ich erfüllen?
+
+* Eine Umgebung, in der ein laufender, unterstützter {kube} Cluster vorhanden ist und in der {ranchera} bereitgestellt wurde.
+Siehe link:https://documentation.suse.com/cloudnative/rancher-manager/latest/en/installation-and-upgrade/requirements/requirements.html[{ranchera} Installationsanforderungen] für weitere Details.
+* {sregistry} Anmeldeinformationen für ein Konto mit einem {productname} Abonnement (ein Benutzername und ein Passwort/Token).
+Siehe link:https://documentation.suse.com/en-us/cloudnative/suse-private-registry/html/private-registry/pr-deployment.html#pr-deployment-kube-secrets[Erhalten von {kube} Geheimnissen von {scca}] für weitere Details.
+
+
+[#pr-install-rancher-procedure]
+=== Was sind die Schritte zur Installation von {productname} über die {ranchera} Benutzeroberfläche?
+
+.*SCHRITT 1*: Teilen Sie {ranchera} mit, wo sich das {productname} Repository befindet, um nach dem Installationschart zu suchen.
+. Melden Sie sich bei {ranchera} an.
+. Klicken Sie auf das Hamburger-Menü (☰) in der oberen linken Ecke, wählen Sie menu:Clusterverwaltung[] und klicken Sie auf den Namen Ihres Clusters, normalerweise `local`.
+. Wählen Sie im linken Menü menu:Apps[Repositories].
+. Klicken Sie auf die Schaltfläche btn:[Erstellen] oben rechts und füllen Sie das sich öffnende Formular aus:
+  .. *Ziel*: Wählen Sie btn:[OCI Repository].
+  .. *Name*: Geben Sie einen Namen für das Repository ein, z. B. `SUSE Private Registry`.
+  .. *Beschreibung*: Fügen Sie optional eine Beschreibung des Repositories hinzu.
+  .. *OCI Repository Host-URL*: Enter \`oci://registry.suse.com/private-registry/private-registry-helm`.
+  .. *Authentifizierung*: Ändern Sie zu `Create an HTTP Basic Auth Secret` und geben Sie den Benutzernamen und das Passwort der Registry-Anmeldeinformationen ein.
+. Bestätigen Sie mit btn:[Erstellen].
+
+.Hinzufügen eines {productname} Repositories
+image::spr-rancher-add-repo.png[Ein Screenshot, der zeigt, wie man ein {productname} Repository zu {ranchera} hinzufügt, width=100%]
+
+.*SCHRITT 2*: Erstellen Sie ein Geheimnis, um auf die Bilder in der \`registry.suse.com` zuzugreifen.
+. Klicken Sie auf das Hamburger-Menü (☰) in der oberen linken Ecke und wählen Sie menu:Clusterverwaltung[].
+. Wechseln Sie zu dem Cluster, zu dem Sie das Geheimnis hinzufügen möchten, und klicken Sie auf btn:[Erkunden].
+. Um zur Geheimnisverwaltung zu navigieren, wählen Sie menu:Speicher[Geheimnisse] und klicken Sie auf btn:[Erstellen] in der oberen rechten Ecke.
+. Wählen Sie das btn:[HTTP Basic Auth] Geheimnis und dann den `private-registry` Namespace.
+. Geben Sie `suse-registry` als Namen für das Geheimnis ein.
+. Füllen Sie die Felder `username` und `password` mit den {suse} Anmeldeinformationen aus, die in xref:pr-install-rancher-requirements[] erhalten wurden.
+
+.Hinzufügen von {productname} Geheimnissen
+image::spr-rancher-add-secrets.png[Ein Screenshot, der zeigt, wie man {productname} Geheimnisse zu {ranchera} hinzufügt, width=100%]
+
+.*SCHRITT 3*: Installieren Sie das {helm} Chart.
+. Wählen Sie im Hauptmenü links menu:Apps[Charts].
+. Geben Sie den Namen des zugewiesenen {productname} Repository in das Suchfeld ein. Beispiel: `SUSE Private Registry`.
+Wenn es nicht in der Liste erscheint, klicken Sie btn:[Alle Repositories aktualisieren].
+. Klicken Sie auf das Chart und sehen Sie sich die `README.md` an.
+. Optional können Sie die Installationswerte anpassen.
+Entweder klicken Sie durch die Abschnitte auf der linken Seite des `Edit Options`-Panels, um alle konfigurierbaren Werte anzuzeigen, oder Sie bearbeiten die Werte direkt in der YAML-Datei des Charts.
+. Klicken Sie oben rechts auf btn:[Diese Version installieren].
+
+.Installieren von {productname}
+image::spr-rancher-install.png[Ein Screenshot, der den Installationsbildschirm von {productname} in {ranchera} zeigt, width=100%]

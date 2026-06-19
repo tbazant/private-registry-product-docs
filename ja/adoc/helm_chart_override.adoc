@@ -1,0 +1,426 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-helm-chart-override]
+== {productname} {helm} チャートを上書きする
+:revdate: 2025-10-15
+:page-revdate: {revdate}
+
+{productname} ({productnameshort}) {helm} チャートはデフォルト値で配信されます。
+次のいずれかの方法で {helm} チャートのインストールを調整できます：
+
+* コマンドラインの `helm install` `--set` フラグに特定のパラメータを追加します。例えば：
+[source]
+$ helm install <RELEASE_NAME> \
+oci://registry.suse.com/private-registry/private-registry-helm \
+--namespace <PRIVATE_REGISTRY_NAMESPACE> \
+--set harborAdminPassword=<MY_PASSWORD> \
+--set externalURL=https://<PRIVATE_REGISTRY_FQDN> \
+--set expose.ingress.hosts.core=<PRIVATE_REGISTRY_FQDN>
+* Create a {suse} custom `suse_registry_override.yaml` file and pass it to the `--f` flag, for example:
+[source]
+  $ helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+  -f suse_registry_override.yaml
+
+[#pr-helm-chart-override-examples]
+=== {sregistry} {helm} 上書きファイルの例
+.{ingress} を使用した最小限のデプロイメント
+[example]
+----
+expose:
+  type: ingress //<1>
+  ingress:
+    hosts:
+      core: <PRIVATE_REGISTRY_FQDN> //<2>
+
+externalURL: https://<PRIVATE_REGISTRY_FQDN> //<3>
+
+harborAdminPassword: "<MY_PASSWORD>" //<4>
+
+database:
+  internal:
+    password: "<MY_PASSWORD_POSTGRESQL>"
+
+redis:
+  internal:
+   password: "<MY_PASSWORD_REDIS>"
+----
+[callouts]
+<1> {sregistry} がどのように公開されるか。`ingress`、`loadBalancer`、`nodePort` または `clusterIPhis` である可能性があります。デフォルトは`ingress`です。
+<2> {kube} 内部ネットワーキング設定のホスト名。
+<3> {sregistry} アプリケーションが実行される URL。ユーザーインターフェース内のリンク、リダイレクト、および API 応答を生成するために使用されます。
+<4> アプリケーションの管理者パスワード。
+
+.`loadBalancer` を使用した典型的なデプロイメント
+[example]
+----
+expose:
+  type: loadBalancer //<1>
+  tls:
+    enabled: true
+    certSource: secret //<2>
+    secret:
+      secretName: <SECRET_NAME>
+
+    auto:
+      commonName: <PRIVATE_REGISTRY_FQDN> //<3>
+
+externalURL: https://<PRIVATE_REGISTRY_FQDN> //<4>
+
+harborAdminPassword: "<MY_PASSWORD>" //<5>
+
+database:
+  internal:
+    password: "<MY_PASSWORD_POSTGRESQL>"
+
+redis:
+  internal:
+   password: "<MY_PASSWORD_REDIS>"
+----
+[callouts]
+<1> {sregistry} がどのように公開されるか。`ingress`、`loadBalancer`、`nodePort` または `clusterIP` である可能性があります。デフォルトは`ingress`です。
+<2> `auto`、`secret` または `none` である可能性があります。オプションに応じて、追加の値を含める必要がある場合があります。
+<3> TLS暗号化を使用する場合、このフィールドは`externalURL`の値と一致する必要があります。
+<4> {sregistry} アプリケーションが実行される URL。ユーザーインターフェース内のリンク、リダイレクト、および API 応答を生成するために使用されます。
+<5> アプリケーションの管理者パスワード。
+
+[#pr-helm-chart-override-parameters]
+=== {helm}チャートパラメータと値を上書きします。
+
+以下の表には、デフォルトのインストール値を上書きするために使用できるすべてのパラメータとその説明がリストされています。
+
+.グローバルパラメータ
+`global.imageRegistry`:: すべてのイメージに使用されるコンテナイメージレジストリに対するグローバル上書きを設定します。
+`global.imagePullSecrets`:: コンテナイメージレジストリにアクセスするためのグローバルプルシークレットを設定します。
+
+.共通パラメータ
+`harborAdminPassword`:: {harbor}管理者の初期パスワードを設定します。デプロイ後にポータルから変更します。デフォルトは`Harbor12345`です。
+`externalURL`:: `harbor-core`サービスの外部URLを指定します。デフォルトは`\https://core.harbor.domain`です。
+`existingSecretAdminPasswordKey`:: {harbor}管理者パスワードを含むシークレット内のキー名を設定します。デフォルトは`HARBOR_ADMIN_PASSWORD`です。
+`imagePullSecrets`:: すべてのデプロイメントの`imagePullSecrets`名前を設定します。
+`updateStrategy.type`:: 永続ボリュームを持つデプロイメントの更新戦略を設定します。`RollingUpdate`または`Recreate`を受け入れます。ボリュームのRWMがサポートされていない場合は`Recreate`を使用します。デフォルトは`RollingUpdate`です。
+`logLevel`:: {harbor}サービスのログレベルを設定します。`fatal`、`error`、`warn`、`info`、`debug`または`trace`を受け入れます。デフォルトは`debug`です。
+`enableMigratehelmHook`:: {helm}フックを介してデータベース移行ジョブを実行します。`true`の場合、移行ジョブを`harbor-core`から分離します。デフォルトは`false`です。
+`caSecretName`:: `ca.crt`キーを含むシークレット名を指定します。
+
+.プロキシパラメーター
+`proxy.httpProxy`:: HTTPプロキシサーバーのURLを指定します。デフォルトは`""`です。
+`proxy.httpsProxy`:: HTTPSプロキシサーバーのURLを指定します。デフォルトは`""`です。
+`proxy.noProxy`:: プロキシ設定をバイパスするURLを設定します。デフォルトは`127.0.0.1,localhost,.local,.internal`です。
+`proxy.components`:: プロキシ設定を使用するコンポーネントを設定します。デフォルトは`["core","jobservice","trivy"]`です。
+
+.公開パラメータ
+`expose.type`:: サービス公開タイプを指定します: `ingress`, `clusterIP`, `nodePort` または `loadBalancer`。デフォルトは`ingress`です。
+`expose.tls.enabled`:: TLSを有効にします。デフォルトは`true`です。
+`expose.tls.certSource`:: TLS証明書のソースを `auto`, `secret` または `none` として設定します。デフォルトは`auto`です。
+`expose.tls.auto.commonName`:: タイプが `ingress` でない場合、証明書の共通名を設定します。
+`expose.tls.secret.secretName`:: `tls.crt`（証明書）と `tls.key`（秘密鍵）を含むシークレットの名前を指定します。
+`expose.ingress.hosts.core`:: {ingress} ルール内の {harbor} コアサービスホストを設定します。デフォルトは`core.harbor.domain`です。
+`expose.ingress.controller`:: {ingress} コントローラーの種類を設定します。`default`, `gce`, `alb`, `f5-bigip` および `ncp` をサポートします。デフォルトは`default`です。
+`expose.ingress.kubeVersionOverride`:: {ingress} テンプレート用の {kube} バージョンを上書きします。
+`expose.ingress.annotations`:: {ingress} アノテーションを設定します。
+`expose.ingress.labels`:: {ingress} 特有のラベルを設定します。デフォルトは`{}`です。
+`expose.clusterIP.name`:: ClusterIPサービス名を設定します。デフォルトは`harbor`です。
+`expose.clusterIP.annotations`:: ClusterIPサービスアノテーションを設定します。デフォルトは`{}`です。
+`expose.clusterIP.ports.httpPort`:: HTTPサービスポートを設定します。デフォルトは`80`です。
+`expose.clusterIP.ports.httpsPort`:: HTTPSサービスポートを設定します。デフォルトは`443`です。
+`expose.clusterIP.labels`:: ClusterIP特有のラベルを設定します。デフォルトは`{}`です。
+`expose.nodePort.name`:: NodePortサービス名を設定します。デフォルトは`harbor`です。
+`expose.nodePort.ports.http.port`:: HTTPサービスポートを設定します。デフォルトは`80`です。
+`expose.nodePort.ports.http.nodePort`:: HTTPノードポートを設定します。デフォルトは`30002`です。
+`expose.nodePort.ports.https.port`:: HTTPSサービスポートを設定します。デフォルトは`443`です。
+`expose.nodePort.ports.https.nodePort`:: HTTPSノードポートを設定します。デフォルトは`30003`です。
+`expose.nodePort.annotations`:: NodePortアノテーションを設定します。
+`expose.nodePort.labels`:: NodePort特有のラベルを設定します。デフォルトは`{}`です。
+`expose.loadBalancer.name`:: サービス名を設定します。デフォルトは`harbor`です。
+`expose.loadBalancer.IP`:: IP割り当てがサポートされている場合、loadBalancer IPを設定します。デフォルトは`""`です。
+`expose.loadBalancer.ports.httpPort`:: HTTPサービスポートを設定します。デフォルトは`80`です。
+`expose.loadBalancer.ports.httpsPort`:: HTTPSサービスポートを設定します。デフォルトは`30002`です。
+`expose.loadBalancer.annotations`:: loadBalancerサービスアノテーションを設定します。デフォルトは`{}`です。
+`expose.loadBalancer.labels`:: loadBalancer特有のラベルを設定します。デフォルトは`{}`です。
+`expose.loadBalancer.sourceRanges`:: loadBalancerSourceRangesのIPアドレス範囲を指定します。デフォルトは`[]`です。
+
+[#helm-persistence-parameters]
+.永続性パラメータ
+`persistence.enabled`:: データの永続性を有効または無効にします。デフォルトは`true`です。
+`persistence.resourcePolicy`:: `keep`は、{helm}削除操作中にPVCの削除を防ぎます。空の値は、チャート削除後にPVCを削除します。デフォルトは`keep`です。
+`persistence.persistentVolumeClaim.registry.existingClaim`:: バインディングの前に手動で作成する必要がある既存のPVC。PVCが他のコンポーネントと共有されている場合、subPathの仕様が必要です。
+`persistence.persistentVolumeClaim.registry.storageClass`:: ボリュームをプロビジョニングする`storageClass`。
+`persistence.persistentVolumeClaim.registry.subPath`:: ボリューム内のサブパス。
+`persistence.persistentVolumeClaim.registry.accessMode`:: ボリュームのアクセスモード。デフォルトは`ReadWriteOnce`です。
+`persistence.persistentVolumeClaim.registry.size`:: ボリュームのサイズ。デフォルトは`5Gi`です。
+`persistence.persistentVolumeClaim.registry.annotations`:: ボリュームの注釈。
+`persistence.persistentVolumeClaim.jobservice.jobLog.existingClaim`:: バインディングの前に手動で作成する必要がある既存のPVC。PVCが他のコンポーネントと共有されている場合、subPathの仕様が必要です。
+`persistence.persistentVolumeClaim.jobservice.jobLog.storageClass`:: ボリュームをプロビジョニングする`storageClass`。
+`persistence.persistentVolumeClaim.jobservice.jobLog.subPath`:: ボリューム内のサブパス。
+`persistence.persistentVolumeClaim.jobservice.jobLog.accessMode`:: ボリュームのアクセスモード。デフォルトは`ReadWriteOnce`です。
+`persistence.persistentVolumeClaim.jobservice.jobLog.size`:: ボリュームのサイズ。デフォルトは`1Gi`です。
+`persistence.persistentVolumeClaim.jobservice.jobLog.annotations`:: ボリュームの注釈。
+`persistence.persistentVolumeClaim.database.existingClaim`:: バインディングの前に手動で作成する必要がある既存のPVC。PVCが他のコンポーネントと共有されている場合、subPathの仕様が必要です。
+`persistence.persistentVolumeClaim.database.storageClass`:: ボリュームをプロビジョニングする`storageClass`。
+`persistence.persistentVolumeClaim.database.subPath`:: ボリューム内のサブパス。外部データベースが使用されている場合は無視されます。
+`persistence.persistentVolumeClaim.database.accessMode`:: ボリュームのアクセスモード。外部データベースが使用されている場合は無視されます。デフォルトは`ReadWriteOnce`です。
+`persistence.persistentVolumeClaim.database.size`:: ボリュームのサイズ。外部データベースが使用されている場合は無視されます。デフォルトは`1Gi`です。
+`persistence.persistentVolumeClaim.database.annotations`:: ボリュームの注釈。
+`persistence.persistentVolumeClaim.redis.existingClaim`:: バインディングの前に手動で作成する必要がある既存のPVC。PVCが他のコンポーネントと共有されている場合、subPathの仕様が必要です。
+`persistence.persistentVolumeClaim.redis.storageClass`:: ボリュームをプロビジョニングする`storageClass`。指定されていない場合はデフォルトのStorageClassが使用されます。
+`persistence.persistentVolumeClaim.redis.subPath`:: ボリューム内のサブパス。外部の{valkey}が使用されている場合は無視されます。
+`persistence.persistentVolumeClaim.redis.accessMode`:: ボリュームのアクセスモード。外部の{valkey}が使用されている場合は無視されます。デフォルトは`ReadWriteOnce`です。
+`persistence.persistentVolumeClaim.redis.size`:: ボリュームのサイズ。外部の{valkey}が使用されている場合は無視されます。デフォルトは`1Gi`です。
+`persistence.persistentVolumeClaim.redis.annotations`:: ボリュームの注釈。
+`persistence.persistentVolumeClaim.trivy.existingClaim`:: バインディングの前に手動で作成する必要がある既存のPVC。PVCが他のコンポーネントと共有されている場合、subPathの仕様が必要です。
+`persistence.persistentVolumeClaim.trivy.storageClass`:: ボリュームをプロビジョニングする`storageClass`。指定されていない場合はデフォルトのStorageClassが使用されます。
+`persistence.persistentVolumeClaim.trivy.subPath`:: ボリューム内のサブパス。
+`persistence.persistentVolumeClaim.trivy.accessMode`:: ボリュームのアクセスモード。デフォルトは`ReadWriteOnce`です。
+`persistence.persistentVolumeClaim.trivy.size`:: ボリュームのサイズ。デフォルトは`1Gi`です。
+`persistence.persistentVolumeClaim.trivy.annotations`:: ボリュームの注釈。
+`persistence.imageChartStorage.disableredirect`:: コンテンツのバックエンドからのリダイレクト管理を制御します。サポートされていないバックエンドのリダイレクトを無効にするにはtrueに設定します。デフォルトは`false`です。
+`persistence.imageChartStorage.caBundleSecretName`:: 自己署名のストレージサービス証明書用のCAバンドルを含むシークレットの名前。
+`persistence.imageChartStorage.type`:: 画像とチャートのストレージタイプ：`filesystem`、`azure`、`gcs`、`s3`、`swift`、または`oss`。デフォルトは`filesystem`です。
+`persistence.imageChartStorage.gcs.existingSecret`:: GCSサービスアカウントJSONキーを含む既存のシークレットの名前。キーは`gcs-key.json`でなければなりません。デフォルトは`""`です。
+`persistence.imageChartStorage.gcs.useWorkloadIdentity`:: GKEクラスターでのワークロードアイデンティティの使用を有効にします。デフォルトは`false`です。
+
+.{nginx}パラメータ
+[options="header"]
+`nginx.image.repository`:: {nginx}のイメージリポジトリ。デフォルトは`private-registry/harbor-nginx`です。
+`nginx.image.tag`:: {nginx}のイメージタグ。
+`nginx.replicas`:: 実行するレプリカの数。デフォルトは`1`です。
+`nginx.revisionHistoryLimit`:: 保持する古い`ReplicaSet`リビジョンの最大数。デフォルトは`10`です。
+`nginx.resources`:: コンテナに割り当てられた計算リソース。デフォルトは`undefined`です。
+`nginx.automountServiceAccountToken`:: サービスアカウントトークンの自動マウントを制御します。デフォルトは`false`です。
+`nginx.nodeSelector`:: ポッド割り当てに使用されるノードラベル。デフォルトは`{}`です。
+`nginx.tolerations`:: ポッド割り当てに使用されるトレランス。デフォルトは`[]`です。
+`nginx.affinity`:: ノードまたはポッドのアフィニティルール。デフォルトは`{}`です。
+`nginx.topologySpreadConstraints`:: リージョンやアベイラビリティゾーンなどの障害ドメインにわたるポッドの分散ルール。デフォルトは`[]`です。
+`nginx.podAnnotations`:: {nginx}ポッドに追加されたアノテーション。デフォルトは`{}`です。
+
+
+.ポータルパラメータ
+`portal.image.repository`:: ポータルイメージのリポジトリの場所。デフォルトは`private-registry/harbor-portal`です。
+`portal.image.tag`:: ポータルイメージのタグ。デフォルトは`3.11`です。
+`portal.replicas`:: 作成するレプリカの数。デフォルトは`1`です。
+`portal.revisionHistoryLimit`:: 保持する古い`ReplicaSet`リビジョンの最大数。デフォルトは`10`です。
+`portal.resources`:: コンテナに割り当てられたリソース。デフォルトは`undefined`です。
+`portal.automountServiceAccountToken`:: サービスアカウントトークンの自動マウントを制御します。デフォルトは`false`です。
+`portal.nodeSelector`:: ポッド割り当てに使用されるノードラベル。デフォルトは`{}`です。
+`portal.tolerations`:: ポッド割り当てに使用されるトレランス。デフォルトは`[]`です。
+`portal.affinity`:: ノードとポッドのアフィニティ設定。デフォルトは`{}`です。
+`portal.topologySpreadConstraints`:: リージョンやアベイラビリティゾーンなどの障害ドメインにわたるポッドの分配を定義します。デフォルトは`[]`です。
+`portal.podAnnotations`:: ポータルポッドに追加されたアノテーション。デフォルトは`{}`です。
+`portal.serviceAnnotations`:: ポータルサービスに追加されたアノテーション。デフォルトは`{}`です。
+`portal.priorityClassName`:: ポッド実行のための優先クラス名。
+`portal.initContainers`:: コントローラーコンテナが開始する前に実行される初期コンテナ。デフォルトは`[]`です。
+
+
+.コアパラメータ
+`core.image.repository`:: {harbor}コアイメージのリポジトリ。デフォルトは`private-registry/harbor-core`です。
+`core.image.tag`:: {harbor}コアイメージのタグ。デフォルトは`2.11`です。
+`core.replicas`:: レプリカの数。デフォルトは`1`です。
+`core.revisionHistoryLimit`:: リビジョン履歴の制限。デフォルトは`10`です。
+`core.startupProbe.initialDelaySeconds`:: スタートアッププローブの初期遅延（秒）。デフォルトは`10`です。
+`core.resources`:: コンテナに割り当てるリソース。デフォルトは`undefined`です。
+`core.automountServiceAccountToken`:: サービスアカウントトークンをマウントします。デフォルトは`false`です。
+`core.nodeSelector`:: ポッド割り当てのためのノードラベル。デフォルトは`{}`です。
+`core.tolerations`:: ポッド割り当てのためのトレランス。デフォルトは`[]`です。
+`core.affinity`:: ノードまたはポッドのアフィニティ。デフォルトは`{}`です。
+`core.topologySpreadConstraints`:: ポッドが地域や可用性ゾーンなどの障害ドメインに分散される方法を定義する制約。デフォルトは`[]`です。
+`core.podAnnotations`:: コアポッドに追加するアノテーション。デフォルトは`{}`です。
+`core.serviceAnnotations`:: コアサービスに追加するアノテーション。デフォルトは`{}`です。
+`core.configureUserSettings`:: ユーザー設定を構成するための環境変数CONFIG_OVERWRITE_JSON内のJSON文字列。
+`core.quotaUpdateProvider`:: プロジェクトのクォータ使用量を更新するためのプロバイダー、オプションは`redis`または`db`です。デフォルトは`db`です。
+`core.secret`:: コアサーバーが他のコンポーネントと通信する際に使用されます。
+`core.secretName`:: トークンの暗号化または復号化に自分のTLS証明書と秘密鍵を使用するための{kube}シークレットの名前。
+`core.tokenKey`:: サービストークンに署名するために使用されるPEM形式のRSA秘密鍵。
+`core.tokenCert`:: サービストークンを検証するために使用される`core.tokenKey`によって署名されたPEM形式の証明書。
+`core.xsrfKey`:: XSRFキー、指定されていない場合は自動的に生成されます。
+`core.priorityClassName`:: ポッドを実行するための優先度クラス。
+`core.artifactPullAsyncFlushDuration`:: アーティファクトのプル時間とリポジトリのプルカウントを非同期で更新するための期間。
+`core.gdpr.deleteUser`:: GDPRに準拠したユーザー削除を有効にします。デフォルトは`false`です。
+`core.gdpr.auditLogsCompliant`:: ユーザーがシステムから削除された場合、監査ログのユーザー名をそのCRC32値に変更することでGDPR準拠を有効にします。デフォルトは`false`です。
+`core.initContainers`:: コントローラーのコンテナが起動する前に実行する初期コンテナ。デフォルトは`[]`です。
+
+
+.ジョブサービスのパラメータ
+`jobservice.image.repository`:: ジョブサービスイメージのリポジトリ。デフォルトは`private-registry/harbor-jobservice`です。
+`jobservice.image.tag`:: ジョブサービスイメージのタグ。デフォルトは`2.11`です。
+`jobservice.replicas`:: レプリカの数。デフォルトは`1`です。
+`jobservice.revisionHistoryLimit`:: リビジョン履歴の制限。デフォルトは`10`です。
+`jobservice.maxJobWorkers`:: ジョブワーカーの最大数。デフォルトは`10`です。
+`jobservice.jobLoggers`:: ジョブのロガー: `file`, `database` または `stdout`。デフォルトは`[file]`です。
+`jobservice.loggerSweeperDuration`:: ジョブログを保持する日数（`jobLoggers`が`stdout`に設定されている場合は無視されます）。デフォルトは`14`です。
+`jobservice.notification.webhook_job_max_retry`:: Webhook通知送信の最大再試行回数。デフォルトは`3`です。
+`jobservice.notification.webhook_job_http_client_timeout`:: Webhook通知送信のためのHTTPクライアントのタイムアウト（秒）。デフォルトは`3`です。
+`jobservice.reaper.max_update_hours`:: タスクが完了するまでの最大待機時間（時間）。指定された時間が経過してもタスクが完了しない場合、エラーとしてマークされますが、実行は続けられます。デフォルトは`24`です。
+`jobservice.reaper.max_dangling_hours`:: 新しいタスクが作成されない状態での実行の最大時間（時間）。デフォルトは`168`です。
+`jobservice.resources`:: コンテナに割り当てる[リソース]。デフォルトは`undefined`です。
+`jobservice.automountServiceAccountToken`:: サービスアカウントトークンをマウントします。デフォルトは`false`です。
+`jobservice.nodeSelector`:: ポッド割り当てのためのノードラベル。デフォルトは`{}`です。
+`jobservice.tolerations`:: ポッド割り当てのためのトレランス。デフォルトは`[]`です。
+`jobservice.affinity`:: ノードまたはポッドのアフィニティ。デフォルトは`{}`です。
+`jobservice.topologySpreadConstraints`:: ポッドが地域や可用性ゾーンなどの障害ドメインに分散されるように定義する制約。デフォルトは`[]`です。
+`jobservice.podAnnotations`:: ジョブサービスポッドに追加するアノテーション。デフォルトは`{}`です。
+`jobservice.priorityClassName`:: ポッドを実行するための優先度クラス。
+`jobservice.secret`:: ジョブサービスが他のコンポーネントと通信する際に使用するシークレット。シークレットキーが指定されていない場合、{helm}が生成します。16文字の文字列でなければなりません。
+`jobservice.initContainers`:: コントローラーのコンテナが起動する前に実行する初期コンテナ。デフォルトは`[]`です。
+
+
+.レジストリパラメータ
+`registry.registry.image.repository`:: レジストリイメージのリポジトリの場所。デフォルトは`private-registry/harbor-registry`です。
+`registry.registry.image.tag`:: レジストリイメージのタグ。デフォルトは`2.11`です。
+`registry.registry.resources`:: コンテナに割り当てる[リソース]。デフォルトは`undefined`です。
+`registry.controller.image.repository`:: レジストリコントローライメージのリポジトリの場所。デフォルトは`private-registry/harbor-registryctl`です。
+`registry.controller.image.tag`:: レジストリコントローライメージのタグ。デフォルトは`2.11`です。
+`registry.controller.resources`:: コンテナに割り当てる[リソース]。デフォルトは`undefined`です。
+`registry.replicas`:: レプリカインスタンスの数。デフォルトは`1`です。
+`registry.revisionHistoryLimit`:: 履歴に保持する最大のリビジョン数。デフォルトは`10`です。
+`registry.nodeSelector`:: ポッド割り当てのためのノードラベル。デフォルトは`{}`です。
+`registry.automountServiceAccountToken`:: サービスアカウントトークンをマウントするかどうかを制御します。デフォルトは`false`です。
+`registry.tolerations`:: ポッド割り当てのためのトレランス。デフォルトは`[]`です。
+`registry.affinity`:: ノードまたはポッドのアフィニティ。デフォルトは`{}`です。
+`registry.topologySpreadConstraints`:: 地域や可用性ゾーンなどの障害ドメインにわたるポッドの分散を定義する制約。デフォルトは`[]`です。
+`registry.middleware`:: バックエンドストレージと{docker}プル受信者の間のCDNのためのミドルウェアサポート。
+`registry.podAnnotations`:: レジストリポッドに追加するアノテーション。デフォルトは`{}`です。
+`registry.priorityClassName`:: ポッド実行のための優先度クラス。
+`registry.secret`:: クライアントとレジストリストレージバックエンド間のアップロード状態を保護するシークレット。
+`registry.credentials.username`:: {harbor}コアの内部レジストリアクセスのためのユーザー名。デフォルトは`harbor_registry_user`です。
+`registry.credentials.password`:: {harbor}コアの内部レジストリアクセスのためのパスワード。デフォルトは`harbor_registry_password`です。
+`registry.credentials.existingSecret`:: htpasswd認証モードでのレジストリインスタンスアクセスのためのパスワードを含む既存の秘密。デフォルトは`""`です。
+`registry.credentials.htpasswdString`:: htpasswd文字列形式のログインとパスワード。`registry.credentials.username`と`registry.credentials.password`を除外します。デフォルトは`undefined`です。
+`registry.relativeurls`:: 真の場合、Locationヘッダーに相対URLを返します。{harbor}がリバースプロキシの背後にある場合は必須です。デフォルトは`false`です。
+`registry.upload_purging.enabled`:: アップロードディレクトリのパージを有効にします。デフォルトは`true`です。
+`registry.upload_purging.age`:: アップロードディレクトリ内のファイルが削除されるまでの期間、デフォルトは1週間です。デフォルトは`168h`です。
+`registry.upload_purging.interval`:: パージ操作の間隔です。デフォルトは`24h`です。
+`registry.upload_purging.dryrun`:: アップロードパージのためのドライランモードを有効にします。デフォルトは`false`です。
+`registry.initContainers`:: コントローラーのコンテナが起動する前に実行される初期コンテナです。デフォルトは`[]`です。
+
+
+.{trivy}パラメータ
+`trivy.enabled`:: {trivy}スキャナーを有効または無効にします。デフォルトは`true`です。
+`trivy.image.repository`:: {trivy}アダプターイメージのリポジトリです。デフォルトは`private-registry/harbor-trivy-adapter`です。
+`trivy.image.tag`:: {trivy}アダプターイメージのタグです。デフォルトは`2.11`です。
+`trivy.resources`:: {trivy}アダプターコンテナに割り当てるリソースです。デフォルトは`undefined`です。
+`trivy.automountServiceAccountToken`:: サービスアカウントトークンをマウントするかどうか。デフォルトは`false`です。
+`trivy.replicas`:: ポッドレプリカの数です。デフォルトは`1`です。
+`trivy.debugMode`:: トラブルシューティングのために{trivy}デバッグモードを有効にします。デフォルトは`false`です。
+`trivy.vulnType`:: 脆弱性の種類のカンマ区切りリスト（`os`と`library`）。デフォルトは`os,library`です。
+`trivy.severity`:: チェックする脆弱性の深刻度のカンマ区切りリストです。デフォルトは`UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`です。
+`trivy.ignoreUnfixed`:: 修正された脆弱性のみを表示します。デフォルトは`false`です。
+`trivy.insecure`:: レジストリ証明書の検証をスキップします。デフォルトは`false`です。
+`trivy.skipUpdate`:: GitHubからの{trivy}データベースのダウンロードを無効にします。デフォルトは`false`です。
+`trivy.skipJavaDBUpdate`:: 有効にした場合、`trivy-java.db`ファイルの手動ダウンロードが必要です。デフォルトは`false`です。
+`trivy.offlineScan`:: {trivy}が依存関係を特定するためにAPIリクエストを送信するのを防ぎます。デフォルトは`false`です。
+`trivy.securityCheck`:: 検出するセキュリティ問題のカンマ区切りリストです。デフォルトは`vuln`です。
+`trivy.timeout`:: スキャン完了までの待機時間。デフォルトは`5m0s`です。
+`trivy.gitHubToken`:: データベースダウンロードに必要なGitHubアクセストークン。デフォルトは`undefined`です。
+`trivy.priorityClassName`:: ポッドを実行するための優先度クラス。デフォルトは`undefined`です。
+`trivy.topologySpreadConstraints`:: 障害ドメインにわたるポッドの分配制約を定義します。デフォルトは`undefined`です。
+`trivy.initContainers`:: メインコンテナが起動する前に実行する初期コンテナのリスト。デフォルトは`[]`です。
+
+.データベースパラメータ
+`database.type`:: データベースの種類。外部データベースを使用する場合は`external`に設定します。デフォルトは`internal`です。
+`database.internal.image.repository`:: データベースイメージのリポジトリ。デフォルトは`private-registry/harbor-db`です。
+`database.internal.image.tag`:: データベースイメージのタグ。デフォルトは`2.11`です。
+`database.internal.password`:: 内部データベースのパスワード。デフォルトは`changeit`です。
+`database.internal.shmSizeLimit`:: {postgresql}のための共有メモリサイズ制限（通常はコンテナメモリ制限の50%）。デフォルトは`512Mi`です。
+`database.internal.resources`:: データベースコンテナに割り当てられたリソース。デフォルトは`undefined`です。
+`database.internal.automountServiceAccountToken`:: サービスアカウントトークンがマウントされるかどうかを制御します。デフォルトは`false`です。
+`database.internal.initContainer.migrator.resources`:: データベースマイグレーター初期コンテナに割り当てられたリソース。デフォルトは`undefined`です。
+`database.internal.initContainer.permissions.resources`:: データベース権限初期コンテナに割り当てられたリソース。デフォルトは`undefined`です。
+`database.internal.nodeSelector`:: ポッド割り当てのためのノードラベル。デフォルトは`{}`です。
+`database.internal.tolerations`:: ポッド割り当てのためのトレランス。デフォルトは`[]`です。
+`database.internal.affinity`:: ノードまたはポッドのアフィニティ設定。デフォルトは`{}`です。
+`database.internal.priorityClassName`:: ポッドを実行するための優先度クラス。デフォルトは`undefined`です。
+`database.internal.livenessProbe.timeoutSeconds`:: ライブネスプローブのタイムアウト（秒）:1-5秒)。デフォルトは`1`です。
+`database.internal.readinessProbe.timeoutSeconds`:: レディネスプローブのタイムアウト（秒）:1-5秒)。デフォルトは`1`です。
+`database.internal.extrInitContainers`:: データベースコンテナが起動する前に実行される追加のinitコンテナ。デフォルトは`[]`です。
+`database.external.host`:: 外部データベースのホスト名。デフォルトは`192.168.0.1`です。
+`database.external.port`:: 外部データベースのポート番号。デフォルトは`5432`です。
+`database.external.username`:: 外部データベースのユーザー名。デフォルトは`user`です。
+`database.external.password`:: 外部データベースのパスワード。デフォルトは`password`です。
+`database.external.coreDatabase`:: コアサービスで使用されるデータベース名。デフォルトは`registry`です。
+`database.external.existingSecret`:: データベースパスワードを含む既存のシークレット。キーは`password`でなければなりません。デフォルトは`""`です。
+`database.external.sslmode`:: 外部データベースの接続方法。オプション: `require`, `verify-full`, `verify-ca`, `disable`。デフォルトは`disable`です。
+`database.maxIdleConns`:: プール内のアイドル接続の最大数（0以下はアイドル接続を保持しないことを意味します）。デフォルトは`50`です。
+`database.maxOpenConns`:: データベースへのオープン接続の最大数（0以下は無制限を意味します）。デフォルトは`100`です。
+`database.podAnnotations`:: データベースポッドに追加するアノテーション。デフォルトは`{}`です。
+
+
+.{valkey} / {redis} パラメータ
+`redis.type`:: {redis} のデプロイメントタイプ。外部 `external` 用に {redis} に設定します。デフォルトは`internal`です。
+`redis.internal.image.repository`:: {redis} イメージのリポジトリ。デフォルトは`private-registry/harbor-redis`です。
+`redis.internal.image.tag`:: {redis} イメージのタグ。デフォルトは`7.2`です。
+`redis.internal.resources`:: {redis} コンテナに割り当てられたリソース。デフォルトは`undefined`です。
+`redis.internal.automountServiceAccountToken`:: サービスアカウントトークンがマウントされるかどうかを制御します。デフォルトは`false`です。
+`redis.internal.nodeSelector`:: ポッド割り当てのためのノードラベル。デフォルトは`{}`です。
+`redis.internal.tolerations`:: ポッド割り当てのためのトレランス。デフォルトは`[]`です。
+`redis.internal.affinity`:: ノードまたはポッドのアフィニティ設定。デフォルトは`{}`です。
+`redis.internal.priorityClassName`:: {redis}ポッドを実行するための優先クラスです。デフォルトは`undefined`です。
+`redis.internal.jobserviceDatabaseIndex`:: ジョブサービスのデータベースインデックスです。デフォルトは`1`です。
+`redis.internal.registryDatabaseIndex`:: レジストリのデータベースインデックスです。デフォルトは`2`です。
+`redis.internal.trivyAdapterIndex`:: {trivy}アダプターのデータベースインデックスです。デフォルトは`5`です。
+`redis.internal.harborDatabaseIndex`:: 雑多な{harbor}ビジネスロジックのデータベースインデックスです。デフォルトは`0`です。
+`redis.internal.cacheLayerDatabaseIndex`:: {harbor}のキャッシュレイヤーのデータベースインデックスです。デフォルトは`0`です。
+`redis.internal.initContainers`:: {redis}コンテナが起動する前に実行される初期化コンテナです。デフォルトは`[]`です。
+`redis.external.addr`:: 外部{redis}インスタンスのアドレスです。デフォルトは`192.168.0.2:6379`です。
+`redis.external.sentinelMasterSet`:: {redis}セントネルマスターセットの名前（該当する場合）。デフォルトは`undefined`です。
+`redis.external.coreDatabaseIndex`:: コアのデータベースインデックスです。デフォルトは`0`です。
+`redis.external.jobserviceDatabaseIndex`:: ジョブサービスのデータベースインデックスです。デフォルトは`1`です。
+`redis.external.registryDatabaseIndex`:: レジストリのデータベースインデックスです。デフォルトは`2`です。
+`redis.external.trivyAdapterIndex`:: {trivy}アダプターのデータベースインデックスです。デフォルトは`5`です。
+`redis.external.harborDatabaseIndex`:: 雑多な{harbor}ビジネスロジックのデータベースインデックスです。デフォルトは`0`です。
+`redis.external.cacheLayerDatabaseIndex`:: {harbor}のキャッシュレイヤーのデータベースインデックスです。デフォルトは`0`です。
+`redis.external.username`:: 外部{redis}認証のユーザー名です。デフォルトは`undefined`です。
+`redis.external.password`:: 外部{redis}認証のパスワードです。デフォルトは`undefined`です。
+`redis.external.existingSecret`:: {redis}パスワードを含む既存のシークレットです。キーは`REDIS_PASSWORD`でなければなりません。デフォルトは`""`です。
+`redis.podAnnotations`:: {redis}ポッドに追加するアノテーションです。デフォルトは`{}`です。
+
+.エクスポーターパラメータです。
+`exporter.replicas`:: 実行するレプリカの数です。デフォルトは`1`です。
+`exporter.revisionHistoryLimit`:: リビジョン履歴の制限です。デフォルトは`10`です。
+`exporter.podAnnotations`:: エクスポーターポッドに追加するアノテーションです。デフォルトは`{}`です。
+`exporter.image.repository`:: エクスポータ画像のリポジトリです。デフォルトは`private-registry/harbor-exporter`です。
+`exporter.image.tag`:: エクスポータ画像のタグです。デフォルトは`2.11`です。
+`exporter.nodeSelector`:: ポッド割り当てのためのノードラベル。デフォルトは`{}`です。
+`exporter.tolerations`:: ポッド割り当てのためのトレランス。デフォルトは`[]`です。
+`exporter.affinity`:: ノードまたはポッドのアフィニティ。デフォルトは`{}`です。
+`exporter.topologySpreadConstraints`:: ポッドが地域や可用性ゾーンなどの障害ドメインにどのように分散するかを定義する制約。デフォルトは`[]`です。
+`exporter.automountServiceAccountToken`:: serviceAccountTokenをマウントするかどうかを制御します。デフォルトは`false`です。
+`exporter.cacheDuration`:: エクスポータによって収集された情報のキャッシュ期間。デフォルトは`30`です。
+`exporter.cacheCleanInterval`:: エクスポータによって収集された情報のキャッシュクリーン間隔です。デフォルトは`14400`です。
+`exporter.priorityClassName`:: ポッドを実行するための優先クラスです。デフォルトは`undefined`です。
+
+.メトリクスパラメータ
+`metrics.enabled`:: {harbor}メトリクスを有効にします。デフォルトは`false`です。
+`metrics.core.path`:: コアメトリクスのためのURLパス。デフォルトは`/metrics`です。
+`metrics.core.port`:: コアメトリクスのためのポート。デフォルトは`8001`です。
+`metrics.registry.path`:: レジストリメトリクスのためのURLパス。デフォルトは`/metrics`です。
+`metrics.registry.port`:: レジストリメトリクスのためのポート。デフォルトは`8001`です。
+`metrics.exporter.path`:: エクスポータメトリクスのためのURLパス。デフォルトは`/metrics`です。
+`metrics.exporter.port`:: エクスポータメトリクスのためのポート。デフォルトは`8001`です。
+`metrics.serviceMonitor.enabled`:: {prometheus} ServiceMonitorの作成を有効にします（{prometheus}us CRDが必要です）。デフォルトは`false`です。
+`metrics.serviceMonitor.additionalLabels`:: ServiceMonitorマニフェストに適用する追加のラベル。デフォルトは`""`です。
+`metrics.serviceMonitor.interval`:: {harbor}メトリクスのためのスクレイプ間隔。デフォルトは`""`です。
+`metrics.serviceMonitor.metricRelabelings`:: メトリクスの取り込み前の再ラベル付けルール。デフォルトは`[]`です。
+`metrics.serviceMonitor.relabelings`:: メトリクスのスクレイピング前の再ラベル付けルール。デフォルトは`[]`です。
+
+.トレースパラメータ
+`trace.enabled`:: トレース機能を有効にします。デフォルトは`false`です。
+`trace.provider`:: トレースプロバイダー（`jaeger`または`otel`）。Jaegerのバージョンは1.26以上である必要があります。デフォルトは`jaeger`です。
+`trace.sample_rate`:: トレースデータのサンプリングレート。`1`は100%をサンプリングし、`0.5`は50%をサンプリングします。デフォルトは`1`です。
+`trace.namespace`:: 異なる{harbor}サービスを区別するためのネームスペース。
+`trace.attributes`:: トレースプロバイダーの初期化におけるユーザー定義属性のためのキーと値の辞書。
+`trace.jaeger.endpoint`:: Jaegerトレースのエンドポイント。デフォルトは`\http://hostname:14268/api/traces`です。
+`trace.jaeger.username`:: Jaeger認証のためのユーザー名。
+`trace.jaeger.password`:: Jaeger認証のためのパスワード。
+`trace.jaeger.agent_host`:: Jaegerのエージェントホスト。
+`trace.jaeger.agent_port`:: Jaegerのエージェントポート。デフォルトは`6831`です。
+`trace.otel.endpoint`:: {otelemetry}トレースのためのエンドポイント。デフォルトは`hostname:4318`です。
+`trace.otel.url_path`:: {otelemetry}のためのURLパス。デフォルトは`/v1/traces`です。
+`trace.otel.compression`:: {otelemetry}のための圧縮を有効にします。デフォルトは`false`です。
+`trace.otel.insecure`:: {otelemetry}のための安全でない接続を確立します。デフォルトは`true`です。
+`trace.otel.timeout`:: {otelemetry}のためのタイムアウト（秒）です。デフォルトは`10`です。
+
+.キャッシュパラメータ
+`cache.enabled`:: キャッシュレイヤーを有効にします。デフォルトは`false`です。
+`cache.expireHours`:: キャッシュレイヤーの有効期限（時間単位）です。デフォルトは`24`です。

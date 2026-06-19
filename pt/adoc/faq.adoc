@@ -1,0 +1,142 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-faq]
+== Perguntas frequentes
+
+:revdate: 2026-05-28
+:page-revdate: {revdate}
+
+[#product-overview-and-differentiators]
+=== Visão geral do produto e diferenciais
+
+[.qanda]
+Que tipo de assinatura os clientes precisam para {productname}?::
+Está incluído no {ranchera} Suite e oferecido como um complemento para {ranchera} Prime.
++
+O preço do complemento é o mesmo que outros complementos.
+
+Quais são os diferenciais com {harbor} (da Coleção de Aplicativos ou upstream)?::
+Use {productname} se você precisar:
+* Suporte de Nível 3 (L3) para problemas de produto.
+* Um ciclo de lançamento previsível.
+* Imagens corrigidas para vulnerabilidades conhecidas. Imagens upstream {harbor} de {dhub} frequentemente contêm link:https://artifacthub.io/packages/helm/harbor/harbor?modal=security-report[várias vulnerabilidades não corrigidas].
++
+Com o tempo, {suse} também adicionará integrações prontas para uso com {ranchera} e priorizará solicitações de funcionalidades dos clientes.
+
+Os clientes precisam comprar o mesmo número de assinaturas de complemento {productname} que assinaturas {ranchera} Prime?::
+Sim, assim como outros complementos, como {suse} Segurança. Uma vantagem adicional do modelo de assinatura {productname} é que ele permite que os clientes realizem quantas implantações precisarem.
+
+[#relationship-with-upstream-harbor]
+=== Relação com upstream {harbor}
+
+[.qanda]
+Como o ciclo de lançamento se alinha com upstream {harbor}?::
+O ciclo de lançamento de {productname} é independente do ciclo de lançamento de upstream {harbor}.
++
+Ao lançar novas versões de {productname}, {suse} visa incluir a versão mais recente do projeto upstream {harbor} que atende aos requisitos de garantia de qualidade e manutenção da SUSE.
+
+Você publicará considerações sobre migração para clientes que executam {harbor} de outras fontes?::
+Não neste momento.
+
+[#deployment-and-installation]
+=== Implantação e instalação
+
+[.qanda]
+Você suporta a instalação do {productname} via {compose}?::
+Não. Você deve instalar e configurar o {productname} usando seu gráfico {helm}. Este gráfico também é usado para gerenciamento contínuo (operações do Dia 2) e pode ser integrado com fluxos de trabalho GitOps.
+
+Você recomenda implantações no cluster local ({ranchera} Manager)?::
+Não. A SUSE recomenda implantar o {productname} em um cluster downstream. Isso torna o registro acessível a outros clusters downstream que precisam consumir imagens.
+
+Quais são as melhores práticas de implantação para um ambiente de alta disponibilidade (HA)?::
+Para HA, não implante o {productname} no cluster de gerenciamento {ranchera} para evitar contenção de recursos.
++
+Você pode implantar o {productname} em um cluster dedicado ou em um ou mais de seus clusters de aplicativos.
++
+Para obter instruções, consulte xref:pr-deployment-ha[]. Observe que você deve fornecer seus próprios componentes de HA para o banco de dados Postgres, servidor Valkey ou Redis, e controlador {ingress}. Esses componentes não são implantados pelo gráfico {productname} {helm} e não são suportados pelo {suse}.
+
+// Will there be guidance for Edge deployments?::
+// TBD.
+
+O gráfico {productname} {helm} será adicionado à Coleção de Aplicativos eventualmente?::
+Sim, a SUSE planeja publicar o gráfico lá no futuro.
+
+Você fornece um operador {kube}?::
+O {productname} não vem com um operador dedicado. Ele é instalado e gerenciado usando seu gráfico {helm}, que pode ser integrado com GitOps. {suse} continua a avaliar a gestão baseada em operadores para lançamentos futuros.
+
+[#security-scanning-and-signing]
+=== Segurança, escaneamento e assinatura
+
+[.qanda]
+Você integra alguma ferramenta de assinatura dentro de {productname}?::
+{productname} não assina imagens por si só, mas pode armazenar, distribuir e verificar assinaturas compatíveis com a Open Container Initiative (OCI).
++
+Uma ferramenta amplamente utilizada é `cosign`, que pode assinar imagens e armazenar as assinaturas em {productname}.
++
+As assinaturas de `cosign` anexadas às imagens são visíveis e podem ser baixadas do portal {productname}.
+
+É possível assinar imagens com Notary ou Cosign para aprovação durante o processo de implantação?::
+{productname} pode armazenar, distribuir e verificar assinaturas de `cosign`.
++
+{productname} não assina imagens por si só. Você deve assinar as imagens durante o processo de construção e, em seguida, fazer o upload da assinatura para o registro junto com a imagem.
++
+Notary não está incluído ou suportado com {productname}.
+
+As imagens são escaneadas para Vulnerabilidades e Exposições Comuns (CVEs) apenas com Trivy, ou pode usar {suse} Security (NeuVector) também?::
+As imagens são escaneadas com Trivy, que vem pronto para uso. {suse} Security pode ser adicionado além de ou como substituto do Trivy.
+
+É possível executar ClamAV ou varreduras de malware semelhantes?::
+Por padrão, {productname} escaneia imagens usando Trivy. Você também pode configurar {suse} Security (NeuVector) como um scanner.
+
+No cenário de cache de pull-through, os critérios de vulnerabilidade serão aplicados?::
+Sim, mas com uma limitação conhecida. Devido aos {harbor} link:https://github.com/goharbor/harbor/issues/16218[issues]  conhecidos, os critérios de vulnerabilidade não são aplicados na primeira extração de uma imagem porque a varredura ainda não foi concluída.
++
+Para cobertura completa, combine {productname} com {suse} Security link:https://open-docs.neuvector.com/policy/admission#admission-control-criteria[controles de admissão].
+
+As imagens de {productname} estão endurecidas?::
+Sim. As imagens de contêiner para {productname} estão endurecidas. Elas são baseadas em SUSE Linux Enterprise Base Container Images (SLE BCI) e construídas no mesmo Serviço de Construção da SUSE de nível empresarial usado para o SUSE Linux Enterprise. Isso garante uma cadeia de suprimento segura. As imagens também são assinadas, e a SUSE publica suas Atestações de Níveis de Cadeia de Suprimento para Artefatos de Software (SLSA).
+
+As imagens de {productname} estão assinadas? Como?::
+As imagens estão assinadas com `cosign`. Você pode verificá-las salvando a chave de assinatura no formato PEM publicada em link:https://www.suse.com/support/kb/doc/?id=000021411[KB 000021411].
++
+Então execute, por exemplo:
++
+[source,bash]
+----
+cosign verify --key container-key.pem registry.suse.com/private-registry/harbor-portal:latest
+----
+
+[#replication-and-sync]
+=== Replicação e sincronização
+
+[.qanda]
+Há um plano para um plug-in para sincronizar com {sregistry} e {sappco}?::
+Sim, tal recurso está planejado.
+
+// When replicating from {sappco}, are SBOMs also replicated?::
+// TBD.
+
+O {productname} oferece replicação em múltiplos sites?::
+Sim. O {productname} suporta replicação de imagens em múltiplos sites, baseada em políticas (pull e push). Você pode sincronizar imagens em várias implantações de {productname} enquanto mantém cada registro independente.
+
+[#features-and-integration-with-ranchera]
+=== Recursos e integração com {ranchera}
+
+[.qanda]
+Há um plano para integrar o Registro dentro do {ranchera} usando uma extensão?::
+Sim. O {suse} planeja uma integração mais profunda com o {ranchera} Prime e outras ofertas. As melhorias futuras em consideração incluem integração de single sign-on (SSO), configuração simplificada para scanners de {ssecurity} e espelhamento da Coleção de Aplicativos, monitoramento com {sobservability} e uma extensão de UI {ranchera}.
+
+O {suse} adicionará o Registro ao Catálogo de Treinamento?::
+Isso ainda não está planejado. Se você estiver interessado em material de treinamento, entre em contato com {suse} para discutir possibilidades com a equipe de Treinamento.
+
+[#support-and-documentation]
+=== Suporte e documentação
+
+[.qanda]
+Há uma política de suporte para {productname}?::
+Sim. A política de suporte de {productname} é a mesma de qualquer outro complemento Prime {ranchera}.
+
+Se a documentação de {productname} estiver faltando informações, posso me referir à documentação oficial de {harbor}?::
+Sim. Como {productname} é baseado em {harbor}, a documentação oficial de {harbor} é um recurso útil. Para recursos específicos da versão SUSE, consulte a documentação de {productname}.
++
+Os xref:pr-relnotes[] especificam qual versão do {harbor} upstream corresponde à sua versão de {productname}.

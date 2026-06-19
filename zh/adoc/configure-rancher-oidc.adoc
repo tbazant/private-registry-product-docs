@@ -1,0 +1,103 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-configure-rancher-oidc]
+== 将 {ranchera} 配置为 OIDC 身份提供者
+
+:revdate: 2026-05-20
+:page-revdate: {revdate}
+
+本指南解释了如何配置 {ranchera} 以充当 OIDC 身份提供者，使用户能够使用他们的 {productname} 凭据登录外部应用程序，例如 {ranchera}。
+
+
+[#pr-configure-rancher-oidc-enable-flag]
+=== 第 1 步：启用 oidc-provider 功能标志
+
+. 以管理员身份登录 {ranchera} 用户界面。
+. 点击左上角的三线菜单 (☰)，然后转到 menu:全局设置[功能标志]。
+. 找到 `oidc-provider` 标志，点击 *更多操作* 图标 (⋮)，然后点击 *激活*。
+
+image::activate-oidc-rancher.png[将 {ranchera} 配置为 OIDC 身份提供者, width=100%]
+
+
+[#pr-configure-rancher-oidc-create-client]
+=== 第 2 步：创建一个 OIDCClient 资源
+
+{ranchera} 使用 `OIDCClient` 自定义资源来注册下游应用程序。
+
+. 创建一个名为 `rancher-oidc-client.yaml` 的文件，包含以下内容：
++
+[source,yaml]
+----
+apiVersion: management.cattle.io/v3
+kind: OIDCClient
+metadata:
+  name: spr-client
+spec:
+  tokenExpirationSeconds: 600
+  refreshTokenExpirationSeconds: 3600
+  redirectURIs:
+    # Replace this with the actual callback URL of your SUSE private registry instance
+    - "https://<SUSE_PRIVATE_REGISTR_URL>/c/oidc/callback"
+----
+
+. 将文件应用到 {ranchera} 正在运行的集群：
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl apply -f rancher-oidc-client.yaml
+----
+
+[#pr-configure-rancher-oidc-retrieve-credentials]
+=== 第三步：检索客户端 ID 和密钥
+
+一旦资源创建，{ranchera} 会自动填充 `clientID` 并提供一个包含 {kube} 的 `clientSecret` Secret。
+
+. 获取生成的客户端 ID：
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl get oidcclient spr-client -o jsonpath="{.status.clientID}"
+----
+
+. 获取客户端密钥。请记得用上一步中检索到的 ID 替换 `<YOUR_CLIENT_ID>`：
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl get secret <YOUR_CLIENT_ID>
+  -n cattle-oidc-client-secrets
+  -o jsonpath="{.data.client-secret-1}" | base64 -d
+----
+
+[#pr-configure-rancher-oidc-configure-spr]
+=== 第四步：配置 {productname}
+
+您可以通过 {helm} 传递值来配置 {productname} 使用 {ranchera} 作为其 OIDC 提供者。
+在您的 `core.configureUserSettings` 配置中使用 `values-oidc.yaml` 块。
+
+以下是一个示例块，使用您的 {ranchera} 端点和上面检索到的凭据。
+替换 `<YOUR_CLIENT_ID>` 和 `<YOUR_CLIENT_SECRET>` 的值。
+
+[source,yaml]
+----
+core:
+  configureUserSettings: |
+    {
+      "auth_mode": "oidc_auth",
+      "oidc_name": "Rancher",
+      "oidc_endpoint": "<RANCHER_URL>/oidc",
+      "oidc_client_id": "<YOUR_CLIENT_ID>",
+      "oidc_client_secret": "<YOUR_CLIENT_SECRET>",
+      "oidc_scope": "openid,profile,offline_access",
+      "oidc_verify_cert": false,
+      "oidc_auto_onboard": true,
+      "oidc_user_claim": "preferred_username",
+      "oidc_groups_claim": "groups",
+      "oidc_admin_group": "spr-admins"
+    }
+----
+
+[NOTE]
+====
+确保 `oidc_verify_cert` 设置为 `false`，如果您的 {ranchera} 实例使用自签名证书。
+通过指定 `oidc_admin_group`，属于 {ranchera} 组的任何 `spr-admins` 用户将自动获得 {productname} 中的系统管理员权限。
+====

@@ -1,0 +1,145 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-deployment]
+== Instalación utilizando la línea de comando
+
+:revdate: 2026-05-04
+:page-revdate: {revdate}
+
+Los siguientes procedimientos describen cómo desplegar {productname} ({productnameshort}) en un clúster {kube}.
+
+[#pr-deployment-kube-secrets]
+=== Obtención de secretos de {kube} desde el {scc}
+Para descargar e instalar las imágenes de {productnameshort} desde {sregistry}, necesitas un secreto {kube} con las credenciales de espejo {scc} ({scca}).
+Para obtener las credenciales de {scca}, sigue estos pasos:
+
+. Visita {scc} en https://scc.suse.com e inicia sesión.
+. Selecciona la organización con una suscripción {productnameshort} activa en la barra lateral izquierda.
+. Selecciona `Proxies` en el menú superior. Las credenciales se muestran en la esquina superior derecha.
+. Para ver la contraseña, haz clic en el icono de 'ojo'.
+. Crea un archivo `password.txt` que contenga la contraseña obtenida.
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}head -1 ./password.txt | helm registry login registry.suse.com \
+  --username <PRIVATE_REGISTRY_USERNAME> --password-stdin
+----
+
+. Crea un espacio de nombres para {sregistry}.
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl create namespace <PRIVATE_REGISTRY_NAMESPACE>
+----
+
+. Almacena las credenciales de espejo recuperadas de {scca} como secretos {kube} ejecutando el siguiente comando:
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl create secret docker-registry suse-registry \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+  --docker-server=registry.suse.com \
+  --docker-username=<PRIVATE_REGISTRY_USERNAME> \
+  --docker-password=$(head -1 ./password.txt)
+----
+
+. Opcionalmente, para utilizar comunicación cifrada TLS, crea un secreto TLS a partir de tus archivos de clave privada y certificado.
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl create secret tls suse-registry-tls \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+  --cert=<CERTIFICATE>.pem \
+  --key=<PRIVATE_KEY>.pem
+----
+
+[#pr-deployment-installing-and-running]
+=== Instalando y ejecutando {productnameshort} utilizando {helm}
+El siguiente procedimiento describe cómo instalar {productnameshort} utilizando {helm}.
+Reemplaza `<RELEASE_NAME>` con tu nombre de lanzamiento personalizado para la ampliación del gráfico {helm}.
+
+. Inicia sesión en {sregistry} utilizando las credenciales de espejo {scca} obtenidas.
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}head -1 ./password.txt | helm registry login registry.suse.com \
+  --username <SUSE_REGISTRY_USERNAME> --password-stdin
+----
+
+. Instala la última versión del gráfico {productnameshort} {helm}.
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+----
++
+Cuando instales el gráfico {productnameshort} {helm}, mostrará la siguiente salida:
++
+[source,bash,subs="+attributes"]
+----
+NOTES:
+CHART VERSION: 1.1.6
+It may take several minutes for the SUSE Private Registry  1.1.2 deployment to complete.
+
+Once the deployment has finished, you will be able to open the SUSE Private Registry portal at https://core.harbor.domain
+
+To get the admin credentials, copy and run the following commands:
+
+echo Username: "admin"
+echo Password: $(kubectl get secret --namespace <PRIVATE_REGISTRY_NAMESPACE>-harbor-core <RELEASE_NAME> -o jsonpath="{.data.HARBOR_ADMIN_PASSWORD}" | base64 -d)
+----
++
+Con la versión 4 de {helm}, puedes usar un digest para especificar el gráfico a instalar:
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm@sha256:<DIAGEST_OF_CHART_TO_INSTALL> \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+----
+
+[TIP]
+====
+* Para obtener la contraseña del usuario administrador, también puedes ejecutar el siguiente comando:
++
+[source,bash,subs="+attributes"]
+----
+{prompt_user}kubectl get secret \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+  --harbor-core <RELEASE_NAME> \
+  -o jsonpath="{.data.HARBOR_ADMIN_PASSWORD}" | base64 -d; echo
+----
+
+* Es posible usar el watcher de kstatus con la bandera '--wait=watcher' para asegurarte de que todos los objetos estén listos para finalizar la instalación.
+Usar el watcher puede hacer que el comando tarde más.
+====
+
+Para anular la instalación predeterminada con valores personalizados del archivo `suse_registry_override.yaml`, consulta <<pr-helm-chart-override>>.
+
+El comando comienza a desplegar varios contenedores relacionados y puede tardar varios minutos en completarse.
+También imprime un mensaje con la URL del portal web {productnameshort} y comandos para obtener las credenciales del administrador.
+
+[#pr-deployment-upgrading]
+=== Actualizando {productnameshort}
+
+Para actualizar la versión del gráfico {helm} a una versión más reciente específica, ejecuta el siguiente comando:
+
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm upgrade <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --version <NEW_VERSION_OF_HELM_CHART> \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+----
+
+El digest solo es posible con la versión 4 de {helm}.
+
+[source,bash,subs="+attributes"]
+----
+{prompt_user}helm update <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm@sha256:<DIAGEST_OF_CHART_TO_INSTALL> \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE> \
+----
+

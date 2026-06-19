@@ -1,0 +1,53 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-introduction]
+== 简介
+:revdate: 2025-09-01
+:page-revdate: {revdate}
+
+[#pr-what-is-spr]
+=== 什么是 {productname}？
+{productname} ({productnameshort}) 是一个本地容器仓库。{productnameshort} 专为 {suse} 客户设计，满足需要与其他 {suse} 服务和产品良好协作的容器仓库需求。
+
+[#pr-what-are-pr-benefits]
+=== {productname} 的好处是什么？
+{productnameshort} 基于 {harbor} 项目，包含所有核心功能以及额外的好处。例如：
+
+* *本地容器仓库。* {productnameshort} 是一个本地托管的容器仓库，可以访问在线 {suse} 注册表服务。
+* *安全性。* {productnameshort} 提供容器化环境的安全考虑。
+它包括身份验证、授权和漏洞扫描。
+* *部署灵活性。*您可以在 {productnameshort} 环境中安装 {kube}，例如 {rke2}。
+您还可以以高可用性设置部署 {productnameshort}。
+* *用户管理。* {productnameshort} 提供基于角色的访问控制 (RBAC) 的身份验证和授权机制。
+* *用户界面。*除了命令行界面，您还可以通过 Web 用户界面管理 {productnameshort}。
+
+[#pr-how-does-pr-work]
+=== {productname} 的工作原理
+{productnameshort} 作为 _开放容器倡议_ (OCI) 容器交付，预计将在 {kube} 集群上部署。{productnameshort} 包含以下容器：
+
+* **harbor-core:** {harbor} 注册表的主要组件，负责处理核心功能，如管理项目、存储库和用户交互。
+* **harbor-db:** 数据库容器，存储与 {harbor} 注册表相关的所有镜像、用户和配置的元数据。
+* **harbor-jobservice:** 管理后台作业的服务，如镜像复制和计划任务，确保注册表内操作的高效处理。
+* **harbor-nginx:** 反向代理和负载均衡器，将传入请求路由到适当的 {harbor} 服务，为用户提供单一入口。
+* **harbor-portal:** 基于 Web 的用户界面，允许用户与 {harbor} 注册表交互，管理镜像并通过图形界面配置设置。
+* **harbor-registry:** 作为实际镜像存储后端的容器，处理容器镜像的存储和检索。
+* **harbor-registryctl:** 用于管理 {harbor} 注册表的命令行工具，允许用户直接从终端执行管理任务和配置。
+* **harbor-trivy-adapter:** 一个将 {trivy} 漏洞扫描器与 {harbor} 集成的容器，能够自动扫描容器镜像中的漏洞进行安全检查。
+* **harbor-exporter:** 导出 {harbor} 指标的容器，格式可被 {prometheus} 收集以进行监控和可观测性。
+* **harbor-valkey:** 一个内存中的键值存储。
+
+部署后，您可以通过 Web 用户界面登录。
+在成功身份验证和授权后，您可以配置产品的多个方面，例如：
+
+* 配置 *global settings*，例如将注册表设置为只读模式或限制谁可以创建项目。
+* 选择一种 *身份验证* 方法。
+* 在数据库身份验证模式下添加用户，并将系统 *管理员角色* 分配给其他用户。
+* 将资源 *配额* 应用于项目中。
+* 在 {productnameshort} 实例之间设置 *镜像复制*。
+
+[#pr-for-more-information]
+=== 更多信息
+请参考以下来源以获取更多详细信息：
+
+* {harbor} 项目主页位于 https://goharbor.io/.
+* {harbor} 的使用详细信息见 https://goharbor.io/docs.

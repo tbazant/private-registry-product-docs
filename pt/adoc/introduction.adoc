@@ -1,0 +1,53 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-introduction]
+== Introdução
+:revdate: 2025-09-01
+:page-revdate: {revdate}
+
+[#pr-what-is-spr]
+=== O que é o comando {productname}?
+{productname} ({productnameshort}) é um registro de contêiner no local. {productnameshort} é projetado para clientes {suse} que precisam de um registro de contêiner que funcione bem com outros serviços e produtos {suse}.
+
+[#pr-what-are-pr-benefits]
+=== Quais são os benefícios de {productname}?
+{productnameshort} é baseado no projeto {harbor} e inclui todos os seus recursos principais, além de benefícios adicionais. Por exemplo:
+
+* *Registro de contêiner no local.* {productnameshort} é um registro de contêiner hospedado localmente com acesso a serviços de registro {suse} online.
+* *Segurança.* {productnameshort} oferece considerações de segurança para ambientes conteinerizados.
+Inclui autenticação, autorização e varredura de vulnerabilidades.
+* *Flexibilidade de implantação.* Você pode instalar {productnameshort} em um ambiente {kube} como {rke2}.
+Você também pode implantar {productnameshort} com configuração de alta disponibilidade.
+* *Gerenciamento de usuários.* {productnameshort} fornece um mecanismo de autenticação e autorização com controle de acesso com base em função (RBAC).
+* *Interface do usuário.* Além de uma interface de linha de comando, você pode administrar {productnameshort} via interface web do usuário.
+
+[#pr-how-does-pr-work]
+=== Como funciona o {productname}?
+{productnameshort} é entregue como _Open Container Initiative_ (OCI) containers e é esperado que seja implantado em um cluster {kube}. {productnameshort} consiste nos seguintes contêineres:
+
+* **harbor-core:** o componente principal do registro {harbor}, responsável por gerenciar funcionalidades principais, como gerenciamento de projetos, repositórios e interações de usuários.
+* **harbor-db:** o contêiner de banco de dados que armazena todos os metadados relacionados a imagens, usuários e configurações para o registro {harbor}.
+* **harbor-jobservice:** um serviço que gerencia trabalhos em segundo plano, como replicação de imagens e tarefas agendadas, garantindo processamento eficiente de operações dentro do registro.
+* **harbor-nginx:** o proxy reverso e balanceador de carga que roteia solicitações recebidas para os serviços {harbor} apropriados, fornecendo um único ponto de entrada para os usuários.
+* **harbor-portal:** a interface web que permite aos usuários interagir com o registro {harbor}, gerenciar imagens e configurar as configurações por meio de uma interface gráfica.
+* **harbor-registry:** o contêiner que serve como o back end de armazenamento real de imagens, lidando com o armazenamento e recuperação de imagens de contêiner.
+* **harbor-registryctl:** uma ferramenta de linha de comando para gerenciar o registro {harbor}, permitindo que os usuários realizem tarefas administrativas e configurações diretamente do terminal.
+* **harbor-trivy-adapter:** um contêiner que integra o {trivy} scanner de vulnerabilidades com {harbor}, permitindo a varredura de segurança automatizada de imagens de contêiner em busca de vulnerabilidades.
+* **harbor-exporter:** o contêiner que exporta {harbor} métricas em um formato que pode ser coletado por {prometheus} para monitoramento e observabilidade.
+* **harbor-valkey:** um armazenamento de chave-valor em memória.
+
+Após a implantação, você pode fazer login via interface web.
+Após a autenticação e autorização bem-sucedidas, você pode configurar múltiplos aspectos do produto, por exemplo:
+
+* Configure *configurações globais*, como definir o registro para modo somente leitura ou restringir quem pode criar projetos.
+* Selecione um *método de autenticação*.
+* Adicione usuários quando estiver no modo de autenticação de banco de dados e atribua o *papel de administrador* a outros usuários.
+* Aplique *quotas* de recursos aos projetos.
+* Configure a *replicação* de imagens entre instâncias {productnameshort}.
+
+[#pr-for-more-information]
+=== Para obter mais informações
+Consulte as seguintes fontes para obter mais detalhes:
+
+* A página inicial do projeto {harbor} está em https://goharbor.io/.
+* O uso de {harbor} está detalhado em https://goharbor.io/docs.

@@ -1,0 +1,44 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-deployment-ha]
+== {ha} セットアップ
+:revdate: 2025-05-04
+:page-revdate: {revdate}
+
+{helm} を使用して、高可用性 (HA) の {productnameshort} を {kube} クラスターにデプロイできます。
+{hasetup} は、{productnameshort} が実行されているノードの1つが利用できなくなった場合でも、ユーザーがサービスの中断を経験しないことを保証します。
+
+[#pr-deployment-ha-architecture]
+=== {hasetup} のアーキテクチャ
+
+{productnameshort} コンポーネントのほとんどは、現在ステートレスです。
+したがって、ポッドのレプリカを増やすことでスケールでき、複数のワーカーノードで実行されることを保証します。{kube} サービスはポッド間の接続を保証します。
+
+ストレージについては、ユーザーはアプリケーションデータ用に HA {postgresql} と {valkey} または {redis} クラスターを提供し、画像やチャートを保存するための PVC またはオブジェクトストレージを用意する必要があります。
+
+image::private-registry-ha.png[{productnameshort} {hasetup}, width=100%]。{productnameshort} {hasetup}。{kube} クラスターは、HA {postgresql} と HA {valkey} を使用して {hasetup} に {ingress} で構成されています。
+
+
+[#pr-deployment-ha-prerequisites]
+=== 前提条件
+* {kube} クラスターのバージョン 1.20 以上
+* {helm} のバージョン 3.2.0 以上
+* HA {ingress} コントローラー ({productnameshort} は外部エンドポイントを管理しません)
+* HA {postgresql} 9.6+ ({productnameshort} は HA データベースのデプロイを処理しません)
+* HA {valkey} または {redis} ({productnameshort} は HA {valkey} または {redis} のデプロイを処理しません)
+* ノード間で共有できる永続ボリュームクレーム (PVC) または外部オブジェクトストレージ
+* {productname} の有効なサブスクリプション
+
+[#pr-deployment-ha-procedure]
+=== {productnameshort} HA で をデプロイする
+
+. {productnameshort} {helm} チャートをダウンロードします。
+[source]
+  $ helm pull oci://registry.suse.com/private-registry/private-registry-helm --untar
+. Update the deployment parameters to match your requirements.
+Refer to <<pr-ha-helm-chart-example>> for an example {helm} chart for {productnameshort} HA setup.
+Refer to <<pr-helm-chart-override>> for a complete list of values to specify or override.
+. Install the {productnameshort} {helm} chart.
+Replace `<RELEASE_NAME>` with your custom release name for the {helm} chart deployment.
+[source]
+  $ helm install <RELEASE_NAME> private-registry-helm/

@@ -1,0 +1,59 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-install-rancher]
+== 使用 {ranchera} 用户界面进行安装
+
+:revdate: 2026-05-05
+:page-revdate: {revdate}
+
+要使用 {productname} 用户界面安装 {ranchera}，您必须满足以下要求并按照以下步骤进行。
+
+[#pr-install-rancher-requirements]
+=== 我需要满足什么要求？
+
+* 一个拥有正在运行且受支持的{kube}集群以及已部署{ranchera}的环境。
+有关更多详细信息，请参阅 link:https://documentation.suse.com/cloudnative/rancher-manager/latest/en/installation-and-upgrade/requirements/requirements.html[{ranchera}安装要求]。
+* 具有 {sregistry} 订阅的 {productname} 帐户凭据（用户名和密码/词元）。
+有关更多详细信息，请参阅 link:https://documentation.suse.com/en-us/cloudnative/suse-private-registry/html/private-registry/pr-deployment.html#pr-deployment-kube-secrets[从 {kube} 获取 {scca} 秘密]。
+
+
+[#pr-install-rancher-procedure]
+=== 使用 {productname} 用户界面安装 {ranchera} 的步骤是什么？
+
+.*步骤 1*：告诉 {ranchera} {productname} 储存库的位置，以查找安装图表。
+. 登录到 {ranchera}。
+. 点击左上角的三线菜单 (☰)，选择 menu:集群管理[]，然后点击您集群的名称，通常是 `local`。
+. 从左侧菜单中选择 menu:APP[储存库]。
+. 点击右上角的 btn:[创建] 按钮，并填写打开的表单：
+  .. *目标*：选择 btn:[OCI 储存库]。
+  .. *名称*:输入储存库的名称，例如 `SUSE Private Registry`。
+  .. *说明*：可选，添加储存库的描述。
+  .. *OCI 储存库主机 URL*：输入 \`oci://registry.suse.com/private-registry/private-registry-helm`。
+  .. *认证*：更改为 `Create an HTTP Basic Auth Secret` 并输入注册表凭据的用户名和密码。
+. 点击 btn:[创建] 以确认。
+
+.添加 {productname} 储存库
+image::spr-rancher-add-repo.png[显示如何将 {productname} 储存库添加到 {ranchera} 的截图, width=100%]
+
+.*步骤 2*：创建一个密钥以访问 \`registry.suse.com` 中的镜像。
+. 点击左上角的三线菜单 (☰)，选择 menu:集群管理[]。
+. 切换到您想要添加密钥的集群，然后点击 btn:[探索]。
+. 要导航到密钥管理，选择 menu:存储[密钥]，然后在右上角点击 btn:[创建]。
+. 选择 btn:[HTTP 基本认证] 密钥，然后选择 `private-registry` 名称空间。
+. 输入 `suse-registry` 作为密钥的名称。
+. 用在 `username` 中获得的 `password` 凭据填充 {suse} 和 xref:pr-install-rancher-requirements[] 字段。
+
+.添加 {productname} 密钥
+image::spr-rancher-add-secrets.png[显示如何将 {productname} 密钥添加到 {ranchera} 的截图, width=100%]
+
+.*步骤 3*：安装 {helm} 图表。
+. 从左侧主菜单中选择 menu:APP[图表]。
+. 在搜索框中输入分配的 {productname} 储存库的名称。例如，`SUSE Private Registry`。
+如果它不在列表中，请点击btn:[刷新所有储存库]。
+. 点击图表查看`README.md`。
+. 您可以选择自定义安装值。
+您可以通过点击`Edit Options`面板左侧的各个部分查看所有可以配置的值，或者直接在图表的YAML文件中编辑值。
+. 在右上角，点击btn:[安装此版本]。
+
+.安装 {productname}
+image::spr-rancher-install.png[显示{productname}在{ranchera}中的安装屏幕的截图, width=100%]

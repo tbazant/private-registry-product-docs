@@ -1,0 +1,426 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-helm-chart-override]
+== Surcharge du graphique {productname} {helm}
+:revdate: 2025-10-15
+:page-revdate: {revdate}
+
+Le graphique {productname} ({productnameshort}) {helm} est livré avec des valeurs par défaut.
+Vous pouvez ajuster {helm} l'installation du graphique de l'une des manières suivantes{nbsp}:
+
+* Ajoutez des paramètres spécifiques aux indicateurs `--set` sur la ligne de commande `helm install`, par exemple{nbsp}:
+[source]
+$ helm install <RELEASE_NAME> \
+oci://registry.suse.com/private-registry/private-registry-helm \
+--namespace <PRIVATE_REGISTRY_NAMESPACE> \
+--set harborAdminPassword=<MY_PASSWORD> \
+--set externalURL=https://<PRIVATE_REGISTRY_FQDN> \
+--set expose.ingress.hosts.core=<PRIVATE_REGISTRY_FQDN>
+* Create a {suse} custom `suse_registry_override.yaml` file and pass it to the `--f` flag, for example:
+[source]
+  $ helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+  -f suse_registry_override.yaml
+
+[#pr-helm-chart-override-examples]
+=== Exemples de fichiers de surcharge {sregistry} {helm}
+.Déploiement minimal avec {ingress}
+[example]
+----
+expose :
+  type : ingress //<1>
+  ingress :
+    hosts :
+      core : <PRIVATE_REGISTRY_FQDN> //<2>
+
+externalURL : https://<PRIVATE_REGISTRY_FQDN> //<3>
+
+harborAdminPassword : "<MY_PASSWORD>" //<4>
+
+database :
+  internal :
+    password : "<MY_PASSWORD_POSTGRESQL>"
+
+redis :
+  internal :
+   password : "<MY_PASSWORD_REDIS>"
+----
+[callouts]
+<1> Comment {sregistry} est exposé. Peut être `ingress`, `loadBalancer`, `nodePort` ou `clusterIPhis`. La valeur par défaut est `ingress`.
+<2> Nom d'hôte pour la configuration réseau interne {kube}.
+<3> URL où l'application {sregistry} s'exécute. Il est utilisé pour générer des liens dans l'interface utilisateur, des redirections et également pour les réponses API.
+<4> Le mot de passe administrateur de l'application.
+
+.Déploiement typique avec `loadBalancer`
+[example]
+----
+expose:
+  type: loadBalancer //<1>
+  tls:
+    enabled: true
+    certSource: secret //<2>
+    secret:
+      secretName: <SECRET_NAME>
+
+    auto:
+      commonName: <PRIVATE_REGISTRY_FQDN> //<3>
+
+externalURL : https://<PRIVATE_REGISTRY_FQDN> //<4>
+
+harborAdminPassword : "<MY_PASSWORD>" //<5>
+
+database :
+  internal :
+    password : "<MY_PASSWORD_POSTGRESQL>"
+
+redis :
+  internal :
+   password : "<MY_PASSWORD_REDIS>"
+----
+[callouts]
+<1> Comment {sregistry} est exposé. Peut être `ingress`, `loadBalancer`, `nodePort` ou `clusterIP`. La valeur par défaut est `ingress`.
+<2> Peut être `auto`, `secret` ou `none`. Selon l'option, vous devrez peut-être inclure des valeurs supplémentaires.
+<3> Lors de l'utilisation du chiffrement TLS, ce champ doit correspondre à la valeur `externalURL`.
+<4> URL où l'application {sregistry} s'exécute. Il est utilisé pour générer des liens dans l'interface utilisateur, des redirections et également pour les réponses API.
+<5> Le mot de passe administrateur de l'application.
+
+[#pr-helm-chart-override-parameters]
+=== Surcharge {helm} des paramètres et valeurs du graphique.
+
+Les tableaux suivants énumèrent tous les paramètres avec des descriptions que vous pouvez utiliser pour surcharger les valeurs d'installation par défaut.
+
+.Paramètres globaux
+`global.imageRegistry`:: Définit une surcharge globale pour le registre d'images de conteneurs utilisé pour toutes les images.
+`global.imagePullSecrets`:: Définit des secrets de tirage globaux pour accéder au registre d'images de conteneurs.
+
+.Paramètres communs
+`harborAdminPassword`:: Définit le mot de passe initial pour l'administrateur {harbor}. Modifiez-le depuis le portail après le déploiement. La valeur par défaut est `Harbor12345`.
+`externalURL`:: Spécifie l'URL externe pour le service `harbor-core`. La valeur par défaut est `\https://core.harbor.domain`.
+`existingSecretAdminPasswordKey`:: Définit le nom de clé dans le secret contenant le mot de passe de l'administrateur {harbor}. La valeur par défaut est `HARBOR_ADMIN_PASSWORD`.
+`imagePullSecrets`:: Définit les noms `imagePullSecrets` pour tous les déploiements.
+`updateStrategy.type`:: Définit la stratégie de mise à jour pour les déploiements avec des volumes persistants. Accepte `RollingUpdate` ou `Recreate`. Utilisez `Recreate` lorsque RWM pour les volumes n'est pas pris en charge. La valeur par défaut est `RollingUpdate`.
+`logLevel`:: Définit le niveau de journalisation pour les services {harbor}. Accepte `fatal`, `error`, `warn`, `info`, `debug` ou `trace`. La valeur par défaut est `debug`.
+`enableMigratehelmHook`:: Exécute la tâche de migration de base de données via le hook {helm}. Lorsque `true`, sépare la tâche de migration de `harbor-core`. La valeur par défaut est `false`.
+`caSecretName`:: Spécifie le nom du secret contenant la clé `ca.crt`.
+
+.Paramètres de proxy
+`proxy.httpProxy`:: Spécifie l'URL du serveur proxy HTTP. La valeur par défaut est `""`.
+`proxy.httpsProxy`:: Spécifie l'URL du serveur proxy HTTPS. La valeur par défaut est `""`.
+`proxy.noProxy`:: Définit les URL qui contournent la configuration du proxy. La valeur par défaut est `127.0.0.1,localhost,.local,.internal`.
+`proxy.components`:: Définit les composants qui utilisent la configuration du proxy. La valeur par défaut est `["core","jobservice","trivy"]`.
+
+.Paramètres d'exposition
+`expose.type`:: Spécifie le type d'exposition du service{nbsp}: `ingress`, `clusterIP`, `nodePort` ou `loadBalancer`. La valeur par défaut est `ingress`.
+`expose.tls.enabled`:: Active TLS. La valeur par défaut est `true`.
+`expose.tls.certSource`:: Définit la source du certificat TLS comme `auto`, `secret` ou `none`. La valeur par défaut est `auto`.
+`expose.tls.auto.commonName`:: Définit le nom commun du certificat lorsque le type n'est pas `ingress`.
+`expose.tls.secret.secretName`:: Spécifie le nom du secret contenant `tls.crt` (certificat) et `tls.key` (clé privée).
+`expose.ingress.hosts.core`:: Définit l'hôte du service noyau {harbor} dans la règle {ingress}. La valeur par défaut est `core.harbor.domain`.
+`expose.ingress.controller`:: Définit le type de contrôleur {ingress}. Prend en charge `default`, `gce`, `alb`, `f5-bigip` et `ncp`. La valeur par défaut est `default`.
+`expose.ingress.kubeVersionOverride`:: Surcharge la version {kube} pour le templating {ingress}.
+`expose.ingress.annotations`:: Définit les annotations {ingress}.
+`expose.ingress.labels`:: Définit des étiquettes spécifiques à {ingress}. La valeur par défaut est `{}`.
+`expose.clusterIP.name`:: Définit le nom du service ClusterIP. La valeur par défaut est `harbor`.
+`expose.clusterIP.annotations`:: Définit les annotations du service ClusterIP. La valeur par défaut est `{}`.
+`expose.clusterIP.ports.httpPort`:: Définit le port du service HTTP. La valeur par défaut est `80`.
+`expose.clusterIP.ports.httpsPort`:: Définit le port du service HTTPS. La valeur par défaut est `443`.
+`expose.clusterIP.labels`:: Définit des étiquettes spécifiques au ClusterIP. La valeur par défaut est `{}`.
+`expose.nodePort.name`:: Définit le nom du service NodePort. La valeur par défaut est `harbor`.
+`expose.nodePort.ports.http.port`:: Définit le port du service HTTP. La valeur par défaut est `80`.
+`expose.nodePort.ports.http.nodePort`:: Définit le port du nœud HTTP. La valeur par défaut est `30002`.
+`expose.nodePort.ports.https.port`:: Définit le port du service HTTPS. La valeur par défaut est `443`.
+`expose.nodePort.ports.https.nodePort`:: Définit le port du nœud HTTPS. La valeur par défaut est `30003`.
+`expose.nodePort.annotations`:: Définit les annotations NodePort.
+`expose.nodePort.labels`:: Définit des étiquettes spécifiques au NodePort. La valeur par défaut est `{}`.
+`expose.loadBalancer.name`:: Définit le nom du service. La valeur par défaut est `harbor`.
+`expose.loadBalancer.IP`:: Définit l'IP du loadBalancer lorsque l'attribution d'IP est prise en charge. La valeur par défaut est `""`.
+`expose.loadBalancer.ports.httpPort`:: Définit le port du service HTTP. La valeur par défaut est `80`.
+`expose.loadBalancer.ports.httpsPort`:: Définit le port du service HTTPS. La valeur par défaut est `30002`.
+`expose.loadBalancer.annotations`:: Définit les annotations du service loadBalancer. La valeur par défaut est `{}`.
+`expose.loadBalancer.labels`:: Définit des étiquettes spécifiques au loadBalancer. La valeur par défaut est `{}`.
+`expose.loadBalancer.sourceRanges`:: Spécifie les plages d'adresses IP pour loadBalancerSourceRanges. La valeur par défaut est `[]`.
+
+[#helm-persistence-parameters]
+.Paramètres de persistance
+`persistence.enabled`:: Active ou désactive la persistance des données. La valeur par défaut est `true`.
+`persistence.resourcePolicy`:: `keep` empêche la suppression des PVC lors d'une opération de suppression {helm}. Une valeur vide supprime les PVC après la suppression du graphique. La valeur par défaut est `keep`.
+`persistence.persistentVolumeClaim.registry.existingClaim`:: Le PVC existant qui doit être créé manuellement avant d'être lié. Nécessite une spécification de subPath si le PVC est partagé avec d'autres composants.
+`persistence.persistentVolumeClaim.registry.storageClass`:: Le `storageClass` qui provisionne le volume.
+`persistence.persistentVolumeClaim.registry.subPath`:: Le sous-chemin dans le volume.
+`persistence.persistentVolumeClaim.registry.accessMode`:: Le mode d'accès du volume. La valeur par défaut est `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.registry.size`:: La taille du volume. La valeur par défaut est `5Gi`.
+`persistence.persistentVolumeClaim.registry.annotations`:: Les annotations du volume.
+`persistence.persistentVolumeClaim.jobservice.jobLog.existingClaim`:: Le PVC existant qui doit être créé manuellement avant d'être lié. Nécessite une spécification de subPath si le PVC est partagé avec d'autres composants.
+`persistence.persistentVolumeClaim.jobservice.jobLog.storageClass`:: Le `storageClass` qui provisionne le volume.
+`persistence.persistentVolumeClaim.jobservice.jobLog.subPath`:: Le sous-chemin dans le volume.
+`persistence.persistentVolumeClaim.jobservice.jobLog.accessMode`:: Le mode d'accès du volume. La valeur par défaut est `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.jobservice.jobLog.size`:: La taille du volume. La valeur par défaut est `1Gi`.
+`persistence.persistentVolumeClaim.jobservice.jobLog.annotations`:: Les annotations du volume.
+`persistence.persistentVolumeClaim.database.existingClaim`:: Le PVC existant qui doit être créé manuellement avant d'être lié. Nécessite une spécification de subPath si le PVC est partagé avec d'autres composants.
+`persistence.persistentVolumeClaim.database.storageClass`:: Le `storageClass` qui provisionne le volume.
+`persistence.persistentVolumeClaim.database.subPath`:: Le sous-chemin dans le volume. Ignoré lorsqu'une base de données externe est utilisée.
+`persistence.persistentVolumeClaim.database.accessMode`:: Le mode d'accès du volume. Ignoré lorsqu'une base de données externe est utilisée. La valeur par défaut est `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.database.size`:: La taille du volume. Ignoré lorsqu'une base de données externe est utilisée. La valeur par défaut est `1Gi`.
+`persistence.persistentVolumeClaim.database.annotations`:: Les annotations du volume.
+`persistence.persistentVolumeClaim.redis.existingClaim`:: Le PVC existant qui doit être créé manuellement avant d'être lié. Nécessite une spécification de subPath si le PVC est partagé avec d'autres composants.
+`persistence.persistentVolumeClaim.redis.storageClass`:: Le `storageClass` qui provisionne le volume. Utilise la StorageClass par défaut si non spécifiée.
+`persistence.persistentVolumeClaim.redis.subPath`:: Le sous-chemin dans le volume. Ignoré lorsqu'un {valkey} externe est utilisé.
+`persistence.persistentVolumeClaim.redis.accessMode`:: Le mode d'accès du volume. Ignoré lorsqu'un {valkey} externe est utilisé. La valeur par défaut est `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.redis.size`:: La taille du volume. Ignoré lorsqu'un {valkey} externe est utilisé. La valeur par défaut est `1Gi`.
+`persistence.persistentVolumeClaim.redis.annotations`:: Les annotations du volume.
+`persistence.persistentVolumeClaim.trivy.existingClaim`:: Le PVC existant qui doit être créé manuellement avant d'être lié. Nécessite une spécification de subPath si le PVC est partagé avec d'autres composants.
+`persistence.persistentVolumeClaim.trivy.storageClass`:: Le `storageClass` qui provisionne le volume. Utilise la StorageClass par défaut si non spécifiée.
+`persistence.persistentVolumeClaim.trivy.subPath`:: Le sous-chemin dans le volume.
+`persistence.persistentVolumeClaim.trivy.accessMode`:: Le mode d'accès du volume. La valeur par défaut est `ReadWriteOnce`.
+`persistence.persistentVolumeClaim.trivy.size`:: La taille du volume. La valeur par défaut est `1Gi`.
+`persistence.persistentVolumeClaim.trivy.annotations`:: Les annotations du volume.
+`persistence.imageChartStorage.disableredirect`:: Contrôle la gestion des redirections depuis les back-ends de contenu. Définir sur vrai pour désactiver les redirections pour les back-ends non pris en charge. La valeur par défaut est `false`.
+`persistence.imageChartStorage.caBundleSecretName`:: Le nom du secret contenant le bundle CA pour les certificats de service de stockage auto-signés.
+`persistence.imageChartStorage.type`:: Le type de stockage pour les images et les graphiques{nbsp}: `filesystem`, `azure`, `gcs`, `s3`, `swift` ou `oss`. La valeur par défaut est `filesystem`.
+`persistence.imageChartStorage.gcs.existingSecret`:: Le nom du secret existant contenant la clé JSON du compte de service GCS. La clé doit être `gcs-key.json`. La valeur par défaut est `""`.
+`persistence.imageChartStorage.gcs.useWorkloadIdentity`:: Active l'utilisation de l'identité de charge de travail dans un cluster GKE. La valeur par défaut est `false`.
+
+.{nginx}Paramètres de
+[options="header"]
+`nginx.image.repository`:: Le dépôt d'images pour {nginx}. La valeur par défaut est `private-registry/harbor-nginx`.
+`nginx.image.tag`:: La balise d'image pour {nginx}.
+`nginx.replicas`:: Le nombre de répliques à exécuter. La valeur par défaut est `1`.
+`nginx.revisionHistoryLimit`:: Le nombre maximum de révisions anciennes de `ReplicaSet` à conserver. La valeur par défaut est `10`.
+`nginx.resources`:: Les ressources de calcul allouées au conteneur. La valeur par défaut est `undefined`.
+`nginx.automountServiceAccountToken`:: Contrôle le montage automatique du jeton de compte de service. La valeur par défaut est `false`.
+`nginx.nodeSelector`:: Les étiquettes de nœud utilisées pour l'attribution des pods. La valeur par défaut est `{}`.
+`nginx.tolerations`:: Les tolérances d'attribution des pods. La valeur par défaut est `[]`.
+`nginx.affinity`:: Les règles d'affinité pour les nœuds ou les pods. La valeur par défaut est `{}`.
+`nginx.topologySpreadConstraints`:: Les règles pour répartir les pods sur des domaines de défaillance tels que les régions ou les zones de disponibilité. La valeur par défaut est `[]`.
+`nginx.podAnnotations`:: Les annotations ajoutées au {nginx} pod. La valeur par défaut est `{}`.
+
+
+.Paramètres du portail
+`portal.image.repository`:: Emplacement du dépôt pour l'image du portail. La valeur par défaut est `private-registry/harbor-portal`.
+`portal.image.tag`:: Balise pour l'image du portail. La valeur par défaut est `3.11`.
+`portal.replicas`:: Nombre de répliques à créer. La valeur par défaut est `1`.
+`portal.revisionHistoryLimit`:: Nombre maximum de révisions anciennes de `ReplicaSet` à conserver. La valeur par défaut est `10`.
+`portal.resources`:: Ressources allouées au conteneur. La valeur par défaut est `undefined`.
+`portal.automountServiceAccountToken`:: Contrôle le montage automatique du jeton de compte de service. La valeur par défaut est `false`.
+`portal.nodeSelector`:: Étiquettes de nœud utilisées pour l'attribution des pods. La valeur par défaut est `{}`.
+`portal.tolerations`:: Tolérances utilisées pour l'attribution des pods. La valeur par défaut est `[]`.
+`portal.affinity`:: Paramètres d'affinité pour les nœuds et les pods. La valeur par défaut est `{}`.
+`portal.topologySpreadConstraints`:: Définit la distribution des pods à travers les domaines de défaillance tels que les régions ou les zones de disponibilité. La valeur par défaut est `[]`.
+`portal.podAnnotations`:: Annotations ajoutées au pod du portail. La valeur par défaut est `{}`.
+`portal.serviceAnnotations`:: Annotations ajoutées au service du portail. La valeur par défaut est `{}`.
+`portal.priorityClassName`:: Nom de la classe de priorité pour l'exécution des pods.
+`portal.initContainers`:: Les conteneurs d'initialisation à exécuter avant le démarrage du conteneur du contrôleur. La valeur par défaut est `[]`.
+
+
+.Paramètres du noyau
+`core.image.repository`:: Le dépôt pour l'image {harbor} du noyau. La valeur par défaut est `private-registry/harbor-core`.
+`core.image.tag`:: La balise pour l'image {harbor} du noyau. La valeur par défaut est `2.11`.
+`core.replicas`:: Le nombre de répliques. La valeur par défaut est `1`.
+`core.revisionHistoryLimit`:: La limite de l'historique des révisions. La valeur par défaut est `10`.
+`core.startupProbe.initialDelaySeconds`:: Le délai initial en secondes pour la sonde de démarrage. La valeur par défaut est `10`.
+`core.resources`:: Les ressources à allouer pour le conteneur. La valeur par défaut est `undefined`.
+`core.automountServiceAccountToken`:: Monte le jeton du compte de service. La valeur par défaut est `false`.
+`core.nodeSelector`:: Les étiquettes de nœud pour l'attribution des pods. La valeur par défaut est `{}`.
+`core.tolerations`:: Les tolérances pour l'attribution des pods. La valeur par défaut est `[]`.
+`core.affinity`:: Les affinités des nœuds ou des pods. La valeur par défaut est `{}`.
+`core.topologySpreadConstraints`:: Les contraintes qui définissent comment les pods sont répartis à travers les domaines de défaillance tels que les régions ou les zones de disponibilité. La valeur par défaut est `[]`.
+`core.podAnnotations`:: Les annotations à ajouter au pod du noyau. La valeur par défaut est `{}`.
+`core.serviceAnnotations`:: Les annotations à ajouter au service du noyau. La valeur par défaut est `{}`.
+`core.configureUserSettings`:: Une chaîne JSON dans la variable d'environnement CONFIG_OVERWRITE_JSON pour configurer les paramètres utilisateur.
+`core.quotaUpdateProvider`:: Le fournisseur pour mettre à jour l'utilisation du quota de projet, les options sont `redis` ou `db`. La valeur par défaut est `db`.
+`core.secret`:: Utilisé lorsque le serveur du noyau communique avec d'autres composants.
+`core.secretName`:: Le nom d'un {kube} secret pour utiliser votre propre certificat TLS et clé privée pour le chiffrement ou le déchiffrement des jetons.
+`core.tokenKey`:: La clé privée RSA au format PEM utilisée pour signer les jetons de service.
+`core.tokenCert`:: Le certificat au format PEM signé par `core.tokenKey` utilisé pour valider les jetons de service.
+`core.xsrfKey`:: La clé XSRF, générée automatiquement si elle n'est pas spécifiée.
+`core.priorityClassName`:: La classe de priorité pour exécuter le pod.
+`core.artifactPullAsyncFlushDuration`:: La durée pour mettre à jour de manière asynchrone le temps de tirage des artefacts et le nombre de tirages de dépôt.
+`core.gdpr.deleteUser`:: Active la suppression des utilisateurs conforme au RGPD. La valeur par défaut est `false`.
+`core.gdpr.auditLogsCompliant`:: Active la conformité au RGPD pour les journaux d'audit en changeant le nom d'utilisateur en sa valeur CRC32 si cet utilisateur a été supprimé du système. La valeur par défaut est `false`.
+`core.initContainers`:: Les conteneurs d'initialisation à exécuter avant le démarrage du conteneur du contrôleur. La valeur par défaut est `[]`.
+
+
+.Paramètres du service de travail.
+`jobservice.image.repository`:: Le dépôt pour l'image du jobservice. La valeur par défaut est `private-registry/harbor-jobservice`.
+`jobservice.image.tag`:: La balise pour l'image du jobservice. La valeur par défaut est `2.11`.
+`jobservice.replicas`:: Le nombre de répliques. La valeur par défaut est `1`.
+`jobservice.revisionHistoryLimit`:: La limite de l'historique des révisions. La valeur par défaut est `10`.
+`jobservice.maxJobWorkers`:: Le nombre maximum de workers. La valeur par défaut est `10`.
+`jobservice.jobLoggers`:: Les enregistreurs pour les tâches{nbsp}: `file`, `database` ou `stdout`. La valeur par défaut est `[file]`.
+`jobservice.loggerSweeperDuration`:: La durée en jours pour conserver les journaux de travail (ignorée si `jobLoggers` est défini sur `stdout`). La valeur par défaut est `14`.
+`jobservice.notification.webhook_job_max_retry`:: Le nombre maximum de tentatives pour l'envoi de notifications webhook. La valeur par défaut est `3`.
+`jobservice.notification.webhook_job_http_client_timeout`:: Le délai d'attente du client HTTP en secondes pour l'envoi de notifications webhook. La valeur par défaut est `3`.
+`jobservice.reaper.max_update_hours`:: Le temps maximum en heures à attendre qu'une tâche se termine. Si la tâche n'est pas terminée après le nombre d'heures spécifié, elle est marquée comme une erreur mais continue de s'exécuter. La valeur par défaut est `24`.
+`jobservice.reaper.max_dangling_hours`:: Le temps maximum en heures pour l'exécution dans un état d'exécution sans qu'une nouvelle tâche soit créée. La valeur par défaut est `168`.
+`jobservice.resources`:: Les [ressources] à allouer pour le conteneur. La valeur par défaut est `undefined`.
+`jobservice.automountServiceAccountToken`:: Monte le jeton du compte de service. La valeur par défaut est `false`.
+`jobservice.nodeSelector`:: Les étiquettes de nœud pour l'attribution des pods. La valeur par défaut est `{}`.
+`jobservice.tolerations`:: Les tolérances pour l'attribution des pods. La valeur par défaut est `[]`.
+`jobservice.affinity`:: Les affinités des nœuds ou des pods. La valeur par défaut est `{}`.
+`jobservice.topologySpreadConstraints`:: Les contraintes qui définissent comment les pods sont répartis à travers les domaines de défaillance tels que les régions ou les zones de disponibilité. La valeur par défaut est `[]`.
+`jobservice.podAnnotations`:: Les annotations à ajouter au pod du jobservice. La valeur par défaut est `{}`.
+`jobservice.priorityClassName`:: La classe de priorité pour exécuter le pod.
+`jobservice.secret`:: Le secret utilisé lorsque le jobservice communique avec d'autres composants. Si une clé secrète n'est pas spécifiée, {helm} la génère. Doit être une chaîne de 16 caractères.
+`jobservice.initContainers`:: Les conteneurs d'initialisation à exécuter avant le démarrage du conteneur du contrôleur. La valeur par défaut est `[]`.
+
+
+.Paramètres du registre
+`registry.registry.image.repository`:: L'emplacement du dépôt pour l'image du registre. La valeur par défaut est `private-registry/harbor-registry`.
+`registry.registry.image.tag`:: La balise pour l'image du registre. La valeur par défaut est `2.11`.
+`registry.registry.resources`:: Les [ressources] à allouer pour le conteneur. La valeur par défaut est `undefined`.
+`registry.controller.image.repository`:: L'emplacement du dépôt pour l'image du contrôleur de registre. La valeur par défaut est `private-registry/harbor-registryctl`.
+`registry.controller.image.tag`:: La balise pour l'image du contrôleur de registre. La valeur par défaut est `2.11`.
+`registry.controller.resources`:: Les [ressources] à allouer pour le conteneur. La valeur par défaut est `undefined`.
+`registry.replicas`:: Le nombre d'instances répliquées. La valeur par défaut est `1`.
+`registry.revisionHistoryLimit`:: Le nombre maximum de révisions à maintenir dans l'historique. La valeur par défaut est `10`.
+`registry.nodeSelector`:: Les étiquettes de nœud pour l'attribution des pods. La valeur par défaut est `{}`.
+`registry.automountServiceAccountToken`:: Contrôle si le jeton de compte de service doit être monté. La valeur par défaut est `false`.
+`registry.tolerations`:: Les tolérances pour l'attribution des pods. La valeur par défaut est `[]`.
+`registry.affinity`:: Les affinités des nœuds ou des pods. La valeur par défaut est `{}`.
+`registry.topologySpreadConstraints`:: Les contraintes qui définissent la distribution des pods à travers les domaines d'échec tels que les régions ou les zones de disponibilité. La valeur par défaut est `[]`.
+`registry.middleware`:: Support intermédiaire pour un CDN entre le stockage back-end et {docker} le destinataire de tirage.
+`registry.podAnnotations`:: Les annotations à ajouter au pod du registre. La valeur par défaut est `{}`.
+`registry.priorityClassName`:: La classe de priorité pour l'exécution du pod.
+`registry.secret`:: Le secret qui sécurise l'état de téléchargement entre le client et le stockage back-end du registre.
+`registry.credentials.username`:: Le nom d'utilisateur pour l'accès au {harbor} registre interne du noyau. La valeur par défaut est `harbor_registry_user`.
+`registry.credentials.password`:: Le mot de passe pour l'accès au {harbor} registre interne du noyau. La valeur par défaut est `harbor_registry_password`.
+`registry.credentials.existingSecret`:: Un secret existant contenant le mot de passe pour l'accès à l'instance du registre en mode d'authentification htpasswd. La valeur par défaut est `""`.
+`registry.credentials.htpasswdString`:: Le login et le mot de passe au format de chaîne htpasswd. Exclut `registry.credentials.username` et `registry.credentials.password`. La valeur par défaut est `undefined`.
+`registry.relativeurls`:: Renvoie des URL relatives dans les en-têtes de localisation lorsque c'est vrai. Requis si {harbor} est derrière un proxy inverse. La valeur par défaut est `false`.
+`registry.upload_purging.enabled`:: Active la purge des répertoires de téléchargement. La valeur par défaut est `true`.
+`registry.upload_purging.age`:: La période après laquelle les fichiers dans les répertoires de téléchargement sont supprimés, par défaut une semaine. La valeur par défaut est `168h`.
+`registry.upload_purging.interval`:: L'intervalle de temps entre les opérations de purge. La valeur par défaut est `24h`.
+`registry.upload_purging.dryrun`:: Active le mode dryrun pour la purge des téléchargements. La valeur par défaut est `false`.
+`registry.initContainers`:: Les conteneurs d'initialisation qui s'exécutent avant le démarrage du conteneur du contrôleur. La valeur par défaut est `[]`.
+
+
+.{trivy} Paramètres de
+`trivy.enabled`:: Active ou désactive le {trivy} scanner. La valeur par défaut est `true`.
+`trivy.image.repository`:: Le dépôt pour l'image de l'{trivy} adaptateur. La valeur par défaut est `private-registry/harbor-trivy-adapter`.
+`trivy.image.tag`:: L'étiquette pour l'image de l'{trivy} adaptateur. La valeur par défaut est `2.11`.
+`trivy.resources`:: Les ressources à allouer pour le conteneur de l'{trivy} adaptateur. La valeur par défaut est `undefined`.
+`trivy.automountServiceAccountToken`:: Indique si le token du compte de service doit être monté. La valeur par défaut est `false`.
+`trivy.replicas`:: Le nombre de répliques de Pod. La valeur par défaut est `1`.
+`trivy.debugMode`:: Active le {trivy} mode de débogage pour le dépannage. La valeur par défaut est `false`.
+`trivy.vulnType`:: Liste des types de vulnérabilités séparés par des virgules (`os` et `library`). La valeur par défaut est `os,library`.
+`trivy.severity`:: Liste des sévérités de vulnérabilités à vérifier, séparée par des virgules. La valeur par défaut est `UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`.
+`trivy.ignoreUnfixed`:: Affiche uniquement les vulnérabilités corrigées. La valeur par défaut est `false`.
+`trivy.insecure`:: Ignore la vérification du certificat du registre. La valeur par défaut est `false`.
+`trivy.skipUpdate`:: Désactive les {trivy} téléchargements de bases de données depuis GitHub. La valeur par défaut est `false`.
+`trivy.skipJavaDBUpdate`:: Nécessite le téléchargement manuel du `trivy-java.db` fichier lorsqu'il est activé. La valeur par défaut est `false`.
+`trivy.offlineScan`:: Empêche {trivy} d'envoyer des requêtes API pour identifier les dépendances. La valeur par défaut est `false`.
+`trivy.securityCheck`:: Liste des problèmes de sécurité à détecter, séparée par des virgules. La valeur par défaut est `vuln`.
+`trivy.timeout`:: La durée d'attente pour l'achèvement du scan. La valeur par défaut est `5m0s`.
+`trivy.gitHubToken`:: Le jeton d'accès GitHub requis pour les téléchargements de bases de données. La valeur par défaut est `undefined`.
+`trivy.priorityClassName`:: La classe de priorité pour l'exécution du pod. La valeur par défaut est `undefined`.
+`trivy.topologySpreadConstraints`:: Définit les contraintes de distribution des pods à travers les domaines d'échec. La valeur par défaut est `undefined`.
+`trivy.initContainers`:: Liste des conteneurs d'initialisation à exécuter avant le démarrage du conteneur principal. La valeur par défaut est `[]`.
+
+.Paramètres de la base de données
+`database.type`:: Le type de base de données. Définir sur `external` lors de l'utilisation d'une base de données externe. La valeur par défaut est `internal`.
+`database.internal.image.repository`:: Le dépôt pour l'image de la base de données. La valeur par défaut est `private-registry/harbor-db`.
+`database.internal.image.tag`:: L'étiquette pour l'image de la base de données. La valeur par défaut est `2.11`.
+`database.internal.password`:: Le mot de passe pour la base de données interne. La valeur par défaut est `changeit`.
+`database.internal.shmSizeLimit`:: La limite de taille de la mémoire partagée pour {postgresql} (typiquement 50 % de la limite de mémoire du conteneur). La valeur par défaut est `512Mi`.
+`database.internal.resources`:: Les ressources allouées pour le conteneur de base de données. La valeur par défaut est `undefined`.
+`database.internal.automountServiceAccountToken`:: Contrôle si le token du compte de service est monté. La valeur par défaut est `false`.
+`database.internal.initContainer.migrator.resources`:: Les ressources allouées pour le conteneur d'initialisation du migrateur de base de données. La valeur par défaut est `undefined`.
+`database.internal.initContainer.permissions.resources`:: Les ressources allouées pour le conteneur d'initialisation des permissions de la base de données. La valeur par défaut est `undefined`.
+`database.internal.nodeSelector`:: Les étiquettes de nœud pour l'attribution des pods. La valeur par défaut est `{}`.
+`database.internal.tolerations`:: Les tolérances pour l'attribution des pods. La valeur par défaut est `[]`.
+`database.internal.affinity`:: Les paramètres d'affinité du nœud ou du pod. La valeur par défaut est `{}`.
+`database.internal.priorityClassName`:: La classe de priorité pour l'exécution du pod. La valeur par défaut est `undefined`.
+`database.internal.livenessProbe.timeoutSeconds`:: Le délai d'attente en secondes pour le probe de vivacité (plage{nbsp}: 1-5s). La valeur par défaut est `1`.
+`database.internal.readinessProbe.timeoutSeconds`:: Le délai d'attente en secondes pour le probe de disponibilité (plage{nbsp}: 1-5s). La valeur par défaut est `1`.
+`database.internal.extrInitContainers`:: Des conteneurs d'initialisation supplémentaires qui s'exécutent avant le démarrage du conteneur de base de données. La valeur par défaut est `[]`.
+`database.external.host`:: Le nom d'hôte de la base de données externe. La valeur par défaut est `192.168.0.1`.
+`database.external.port`:: Le numéro de port de la base de données externe. La valeur par défaut est `5432`.
+`database.external.username`:: Le nom d'utilisateur pour la base de données externe. La valeur par défaut est `user`.
+`database.external.password`:: Le mot de passe pour la base de données externe. La valeur par défaut est `password`.
+`database.external.coreDatabase`:: Le nom de la base de données utilisée par le noyau. La valeur par défaut est `registry`.
+`database.external.existingSecret`:: Le secret existant contenant le mot de passe de la base de données. La clé doit être `password`. La valeur par défaut est `""`.
+`database.external.sslmode`:: La méthode de connexion pour la base de données externe. Options{nbsp}: `require`, `verify-full`, `verify-ca`, `disable`. La valeur par défaut est `disable`.
+`database.maxIdleConns`:: Le nombre maximum de connexions inactives dans le pool (0 ou moins signifie qu'aucune connexion inactive n'est conservée). La valeur par défaut est `50`.
+`database.maxOpenConns`:: Le nombre maximum de connexions ouvertes à la base de données (0 ou moins signifie illimité). La valeur par défaut est `100`.
+`database.podAnnotations`:: Les annotations à ajouter au pod de la base de données. La valeur par défaut est `{}`.
+
+
+.Paramètres {valkey} / {redis}
+`redis.type`:: Le type de {redis} déploiement. Définir sur `external` pour {redis} externe. La valeur par défaut est `internal`.
+`redis.internal.image.repository`:: Le dépôt pour l'image {redis}. La valeur par défaut est `private-registry/harbor-redis`.
+`redis.internal.image.tag`:: L'étiquette pour l'image {redis}. La valeur par défaut est `7.2`.
+`redis.internal.resources`:: Les ressources allouées pour le {redis} conteneur. La valeur par défaut est `undefined`.
+`redis.internal.automountServiceAccountToken`:: Contrôle si le token du compte de service est monté. La valeur par défaut est `false`.
+`redis.internal.nodeSelector`:: Les étiquettes de nœud pour l'attribution des pods. La valeur par défaut est `{}`.
+`redis.internal.tolerations`:: Les tolérances pour l'attribution des pods. La valeur par défaut est `[]`.
+`redis.internal.affinity`:: Les paramètres d'affinité du nœud ou du pod. La valeur par défaut est `{}`.
+`redis.internal.priorityClassName`:: La classe de priorité pour exécuter {redis} le pod. La valeur par défaut est `undefined`.
+`redis.internal.jobserviceDatabaseIndex`:: L'index de la base de données pour jobservice. La valeur par défaut est `1`.
+`redis.internal.registryDatabaseIndex`:: L'index de la base de données pour le registre. La valeur par défaut est `2`.
+`redis.internal.trivyAdapterIndex`:: L'index de la base de données pour {trivy} l'adaptateur. La valeur par défaut est `5`.
+`redis.internal.harborDatabaseIndex`:: L'index de la base de données pour la logique métier {harbor} diverse. La valeur par défaut est `0`.
+`redis.internal.cacheLayerDatabaseIndex`:: L'index de la base de données pour la couche de cache de {harbor}. La valeur par défaut est `0`.
+`redis.internal.initContainers`:: Les conteneurs d'initialisation qui s'exécutent avant le démarrage du {redis} conteneur. La valeur par défaut est `[]`.
+`redis.external.addr`:: L'adresse de l'{redis} instance externe. La valeur par défaut est `192.168.0.2:6379`.
+`redis.external.sentinelMasterSet`:: Le nom de l'ensemble maître {redis} Sentinel (le cas échéant). La valeur par défaut est `undefined`.
+`redis.external.coreDatabaseIndex`:: L'index de la base de données pour le noyau. La valeur par défaut est `0`.
+`redis.external.jobserviceDatabaseIndex`:: L'index de la base de données pour jobservice. La valeur par défaut est `1`.
+`redis.external.registryDatabaseIndex`:: L'index de la base de données pour le registre. La valeur par défaut est `2`.
+`redis.external.trivyAdapterIndex`:: L'index de la base de données pour {trivy} l'adaptateur. La valeur par défaut est `5`.
+`redis.external.harborDatabaseIndex`:: L'index de la base de données pour la logique métier {harbor} diverse. La valeur par défaut est `0`.
+`redis.external.cacheLayerDatabaseIndex`:: L'index de la base de données pour la couche de cache de {harbor}. La valeur par défaut est `0`.
+`redis.external.username`:: Le nom d'utilisateur pour {redis} l'authentification externe. La valeur par défaut est `undefined`.
+`redis.external.password`:: Le mot de passe pour {redis} l'authentification externe. La valeur par défaut est `undefined`.
+`redis.external.existingSecret`:: Le secret existant contenant le {redis} mot de passe. La clé doit être `REDIS_PASSWORD`. La valeur par défaut est `""`.
+`redis.podAnnotations`:: Les annotations à ajouter au {redis} pod. La valeur par défaut est `{}`.
+
+.Paramètres de l'exportateur
+`exporter.replicas`:: Le nombre de répliques à exécuter. La valeur par défaut est `1`.
+`exporter.revisionHistoryLimit`:: La limite de l'historique des révisions. La valeur par défaut est `10`.
+`exporter.podAnnotations`:: Annotations à ajouter au pod de l'exportateur. La valeur par défaut est `{}`.
+`exporter.image.repository`:: Le dépôt pour l'image de l'exportateur. La valeur par défaut est `private-registry/harbor-exporter`.
+`exporter.image.tag`:: L'étiquette pour l'image de l'exportateur. La valeur par défaut est `2.11`.
+`exporter.nodeSelector`:: Étiquettes de nœud pour l'attribution de pod. La valeur par défaut est `{}`.
+`exporter.tolerations`:: Tolérances pour l'attribution de pod. La valeur par défaut est `[]`.
+`exporter.affinity`:: Affinités de nœud ou de pod. La valeur par défaut est `{}`.
+`exporter.topologySpreadConstraints`:: Contraintes qui définissent comment les pods se répartissent sur des domaines de défaillance tels que les régions ou les zones de disponibilité. La valeur par défaut est `[]`.
+`exporter.automountServiceAccountToken`:: Contrôle si le serviceAccountToken doit être monté. La valeur par défaut est `false`.
+`exporter.cacheDuration`:: La durée de mise en cache pour les informations collectées par l'exportateur. La valeur par défaut est `30`.
+`exporter.cacheCleanInterval`:: L'intervalle de nettoyage du cache pour les informations collectées par l'exportateur. La valeur par défaut est `14400`.
+`exporter.priorityClassName`:: La classe de priorité pour exécuter le pod. La valeur par défaut est `undefined`.
+
+.Paramètres des métriques
+`metrics.enabled`:: Active {harbor} les métriques. La valeur par défaut est `false`.
+`metrics.core.path`:: Le chemin URL pour les métriques du noyau. La valeur par défaut est `/metrics`.
+`metrics.core.port`:: Le port pour les métriques du noyau. La valeur par défaut est `8001`.
+`metrics.registry.path`:: Le chemin URL pour les métriques de registre. La valeur par défaut est `/metrics`.
+`metrics.registry.port`:: Le port pour les métriques de registre. La valeur par défaut est `8001`.
+`metrics.exporter.path`:: Le chemin URL pour les métriques de l'exportateur. La valeur par défaut est `/metrics`.
+`metrics.exporter.port`:: Le port pour les métriques de l'exportateur. La valeur par défaut est `8001`.
+`metrics.serviceMonitor.enabled`:: Permet la création d'un {prometheus} ServiceMonitor (requiert {prometheus} CRD). La valeur par défaut est `false`.
+`metrics.serviceMonitor.additionalLabels`:: Étiquettes supplémentaires à appliquer au manifeste ServiceMonitor. La valeur par défaut est `""`.
+`metrics.serviceMonitor.interval`:: L'intervalle de collecte pour {harbor} les métriques. La valeur par défaut est `""`.
+`metrics.serviceMonitor.metricRelabelings`:: Les règles de re-étiquetage pour les métriques avant ingestion. La valeur par défaut est `[]`.
+`metrics.serviceMonitor.relabelings`:: Les règles de re-étiquetage pour les métriques avant collecte. La valeur par défaut est `[]`.
+
+.Paramètres de trace
+`trace.enabled`:: Active la fonctionnalité de traçage. La valeur par défaut est `false`.
+`trace.provider`:: Le fournisseur de traçage (`jaeger` ou `otel`). La version de Jaeger doit être 1.26 ou supérieure. La valeur par défaut est `jaeger`.
+`trace.sample_rate`:: Le taux d'échantillonnage pour les données de trace. `1` échantillonne 100 %, `0.5` échantillonne 50 %. La valeur par défaut est `1`.
+`trace.namespace`:: L'espace de noms pour différencier les différents {harbor} services.
+`trace.attributes`:: Un dictionnaire clé-valeur pour les attributs définis par l'utilisateur lors de l'initialisation du fournisseur de trace.
+`trace.jaeger.endpoint`:: Le point de terminaison pour le traçage Jaeger. La valeur par défaut est `\http://hostname:14268/api/traces`.
+`trace.jaeger.username`:: Le nom d'utilisateur pour l'authentification Jaeger.
+`trace.jaeger.password`:: Le mot de passe pour l'authentification Jaeger.
+`trace.jaeger.agent_host`:: L'hôte de l'agent pour Jaeger.
+`trace.jaeger.agent_port`:: Le port de l'agent pour Jaeger. La valeur par défaut est `6831`.
+`trace.otel.endpoint`:: Le point de terminaison pour le {otelemetry} traçage. La valeur par défaut est `hostname:4318`.
+`trace.otel.url_path`:: Le chemin URL pour {otelemetry}. La valeur par défaut est `/v1/traces`.
+`trace.otel.compression`:: Active la compression pour {otelemetry}. La valeur par défaut est `false`.
+`trace.otel.insecure`:: Établit une connexion non sécurisée pour {otelemetry}. La valeur par défaut est `true`.
+`trace.otel.timeout`:: Le délai d'attente en secondes pour {otelemetry}. La valeur par défaut est `10`.
+
+.Paramètres de cache
+`cache.enabled`:: Active la couche de cache. La valeur par défaut est `false`.
+`cache.expireHours`:: Le temps d'expiration en heures pour la couche de cache. La valeur par défaut est `24`.

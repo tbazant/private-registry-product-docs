@@ -1,0 +1,59 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-install-rancher]
+== {ranchera} UIを使用したインストール
+
+:revdate: 2026-05-05
+:page-revdate: {revdate}
+
+{productname} UIを使用して{ranchera}をインストールするには、以下の要件を満たし、手順に従う必要があります。
+
+[#pr-install-rancher-requirements]
+=== 満たすべき要件は何ですか？
+
+* 稼働中のサポートされている{kube}クラスターと{ranchera}がデプロイされている環境。
+詳細については、link:https://documentation.suse.com/cloudnative/rancher-manager/latest/en/installation-and-upgrade/requirements/requirements.html[{ranchera}インストール要件]を参照してください。
+* {sregistry}サブスクリプションを持つアカウントの{productname}資格情報（ユーザー名とパスワード/トークン）。
+詳細については、link:https://documentation.suse.com/en-us/cloudnative/suse-private-registry/html/private-registry/pr-deployment.html#pr-deployment-kube-secrets[{kube}のシークレットを{scca}から取得する]を参照してください。
+
+
+[#pr-install-rancher-procedure]
+=== {productname} UIを使用して{ranchera}をインストールする手順は何ですか？
+
+.*ステップ 1*:インストールチャートを探すために、{ranchera}に{productname}リポジトリのある場所を教えてください。
+. {ranchera}にログインします。
+. 左上隅の3本線メニュー（☰）をクリックし、menu:クラスター管理[]を選択し、通常は`local`のクラスター名をクリックします。
+. 左側のメニューからmenu:アプリ[リポジトリ]を選択します。
+. 右上のbtn:[作成]ボタンをクリックし、開いたフォームを完成させます：
+  .. *ターゲット*:btn:[OCIリポジトリ]を選択します。
+  .. *名前*:リポジトリの名前を入力します。例えば、`SUSE Private Registry`のように。
+  .. *説明*:オプションで、リポジトリの説明を追加します。
+  .. *OCIリポジトリホストURL*:Enter \`oci://registry.suse.com/private-registry/private-registry-helm`.
+  .. *認証*:`Create an HTTP Basic Auth Secret`に変更し、レジストリの資格情報のユーザー名とパスワードを入力します。
+. btn:[作成]をクリックして確認します。
+
+.{productname}リポジトリを追加しています。
+image::spr-rancher-add-repo.png[{productname}リポジトリを{ranchera}に追加する方法を示すスクリーンショット, width=100%]
+
+.*ステップ 2*:`registry.suse.com`の画像にアクセスするためのシークレットを作成します。
+. 左上隅の3本線メニュー(☰)をクリックし、menu:クラスター管理[]を選択します。
+. シークレットを追加したいクラスターに切り替え、btn:[探索]をクリックします。
+. シークレット管理に移動するには、menu:ストレージ[シークレット]を選択し、右上のbtn:[作成]をクリックします。
+. btn:[HTTP基本認証]シークレットを選択し、次に`private-registry`ネームスペースを選択します。
+. シークレットの名前として`suse-registry`を入力します。
+. `username`と`password`のフィールドに{suse}の資格情報xref:pr-install-rancher-requirements[]を入力します。
+
+.{productname}シークレットを追加しています。
+image::spr-rancher-add-secrets.png[{productname}シークレットを{ranchera}に追加する方法を示すスクリーンショット, width=100%]
+
+.*ステップ 3*:{helm}チャートをインストールします。
+. 左側のメインメニューから、menu:アプリ[チャート]を選択します。
+. 検索ボックスに割り当てられた{productname}リポジトリの名前を入力します。たとえば、`SUSE Private Registry`と指定します。
+リストに表示されない場合は、btn:[すべてのリポジトリを更新]をクリックします。
+. チャートをクリックして、`README.md`を表示します。
+. オプションで、インストール値をカスタマイズできます。
+左側の`Edit Options`パネルのセクションをクリックして、設定可能なすべての値を表示するか、チャートのYAMLファイルで値を直接編集してください。
+. 右上隅で、btn:[このバージョンをインストール]をクリックします。
+
+.{productname}のインストール
+image::spr-rancher-install.png[{productname}のインストール画面を示すスクリーンショット{ranchera}, width=100%]

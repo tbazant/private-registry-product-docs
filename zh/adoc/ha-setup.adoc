@@ -1,0 +1,44 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-deployment-ha]
+== {ha} 设置
+:revdate: 2025-05-04
+:page-revdate: {revdate}
+
+您可以使用 {helm} 在 {productnameshort} 集群上部署高度可用（HA）的 {kube}。
+{hasetup} 确保用户在运行 {productnameshort} 的节点变得不可用时不会经历服务中断。
+
+[#pr-deployment-ha-architecture]
+=== {hasetup} 的架构
+
+大多数 {productnameshort} 组件现在是无状态的。
+因此，我们可以通过增加 pod 副本来扩展它们，确保它们在多个工作节点上运行。{kube} 服务确保 pod 之间的连接。
+
+对于存储，用户应为应用程序数据提供 HA {postgresql} 和 {valkey} 或 {redis} 集群，以及 PVC 或对象存储来存储镜像和图表。
+
+image::private-registry-ha.png[{productnameshort} {hasetup}, width=100%].{productnameshort} {hasetup}{kube} {ingress} 集群在 {hasetup} 中使用 HA {postgresql} 和 HA {valkey}。
+
+
+[#pr-deployment-ha-prerequisites]
+=== 先决条件
+* 1.20 或更高版本的 {kube} 集群
+* 3.2.0 或更高版本的 {helm}
+* HA {ingress} 控制器（{productnameshort} 不管理外部端点）
+* HA {postgresql} 9.6+（{productnameshort} 不处理 HA 数据库的部署）
+* HA {valkey} 或 {redis}（{productnameshort} 不处理 HA {valkey} 或 {redis} 的部署）
+* 可以跨节点共享的持久卷声明（PVC）或外部对象存储
+* 有效的 {productname} 订阅
+
+[#pr-deployment-ha-procedure]
+=== 使用 HA 部署 {productnameshort}
+
+. 下载 {productnameshort} {helm} 图表。
+[source]
+  $ helm pull oci://registry.suse.com/private-registry/private-registry-helm --untar
+. Update the deployment parameters to match your requirements.
+Refer to <<pr-ha-helm-chart-example>> for an example {helm} chart for {productnameshort} HA setup.
+Refer to <<pr-helm-chart-override>> for a complete list of values to specify or override.
+. Install the {productnameshort} {helm} chart.
+Replace `<RELEASE_NAME>` with your custom release name for the {helm} chart deployment.
+[source]
+  $ helm install <RELEASE_NAME> private-registry-helm/

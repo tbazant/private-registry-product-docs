@@ -1,0 +1,426 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-helm-chart-override]
+== 覆盖 {productname} {helm} 图表
+:revdate: 2025-10-15
+:page-revdate: {revdate}
+
+{productname} ({productnameshort}) {helm} 图表以默认值交付。
+您可以通过以下方式之一调整 {helm} 图表安装：
+
+* 在 `--set` 命令行的 `helm install` 标志后附加特定参数，例如：
+[source]
+$ helm install <RELEASE_NAME> \
+oci://registry.suse.com/private-registry/private-registry-helm \
+--namespace <PRIVATE_REGISTRY_NAMESPACE> \
+--set harborAdminPassword=<MY_PASSWORD> \
+--set externalURL=https://<PRIVATE_REGISTRY_FQDN> \
+--set expose.ingress.hosts.core=<PRIVATE_REGISTRY_FQDN>
+* Create a {suse} custom `suse_registry_override.yaml` file and pass it to the `--f` flag, for example:
+[source]
+  $ helm install <RELEASE_NAME> \
+  oci://registry.suse.com/private-registry/private-registry-helm \
+  --namespace <PRIVATE_REGISTRY_NAMESPACE>
+  -f suse_registry_override.yaml
+
+[#pr-helm-chart-override-examples]
+=== {sregistry} {helm} 覆盖文件示例
+.使用 {ingress} 的最小部署
+[example]
+----
+expose:
+  type: ingress //<1>
+  ingress:
+    hosts:
+      core: <PRIVATE_REGISTRY_FQDN> //<2>
+
+externalURL: https://<PRIVATE_REGISTRY_FQDN> //<3>
+
+harborAdminPassword: "<MY_PASSWORD>" //<4>
+
+database:
+  internal:
+    password: "<MY_PASSWORD_POSTGRESQL>"
+
+redis:
+  internal:
+   password: "<MY_PASSWORD_REDIS>"
+----
+[callouts]
+<1> {sregistry} 是如何暴露的。可以是 `ingress`、`loadBalancer`、`nodePort` 或 `clusterIPhis`。默认值为 `ingress`。
+<2> {kube} 内部网络配置的主机名。
+<3> {sregistry} 应用程序运行的 URL。它用于生成用户界面中的链接、重定向以及 API 响应。
+<4> 应用程序的管理员密码。
+
+.使用 `loadBalancer` 的典型部署
+[example]
+----
+expose:
+  type: loadBalancer //<1>
+  tls:
+    enabled: true
+    certSource: secret //<2>
+    secret:
+      secretName: <SECRET_NAME>
+
+    auto:
+      commonName: <PRIVATE_REGISTRY_FQDN> //<3>
+
+externalURL: https://<PRIVATE_REGISTRY_FQDN> //<4>
+
+harborAdminPassword: "<MY_PASSWORD>" //<5>
+
+database:
+  internal:
+    password: "<MY_PASSWORD_POSTGRESQL>"
+
+redis:
+  internal:
+   password: "<MY_PASSWORD_REDIS>"
+----
+[callouts]
+<1> {sregistry} 是如何暴露的。可以是 `ingress`、`loadBalancer`、`nodePort` 或 `clusterIP`。默认值为 `ingress`。
+<2> 可以是 `auto`、`secret` 或 `none`。根据选项，您可能需要包含额外的值。
+<3> 使用 TLS 加密时，此字段必须与 `externalURL` 值匹配。
+<4> {sregistry} 应用程序运行的 URL。它用于生成用户界面中的链接、重定向以及 API 响应。
+<5> 应用程序的管理员密码。
+
+[#pr-helm-chart-override-parameters]
+=== 覆盖 {helm} 图表参数和值
+
+以下表格列出了所有参数及其描述，您可以使用这些参数来覆盖默认安装值。
+
+.全局参数
+`global.imageRegistry`:: 为所有镜像设置容器镜像注册表的全局覆盖。
+`global.imagePullSecrets`:: 为访问容器镜像注册表设置全局拉取密钥。
+
+.通用参数
+`harborAdminPassword`:: 为 {harbor} 管理员设置初始密码。在部署后从门户更改它。默认值为 `Harbor12345`。
+`externalURL`:: 指定 `harbor-core` 服务的外部 URL。默认值为 `\https://core.harbor.domain`。
+`existingSecretAdminPasswordKey`:: 设置包含 {harbor} 管理员密码的密钥名称。默认值为 `HARBOR_ADMIN_PASSWORD`。
+`imagePullSecrets`:: 为所有部署设置 `imagePullSecrets` 名称。
+`updateStrategy.type`:: 为具有持久卷的部署设置更新策略。接受 `RollingUpdate` 或 `Recreate`。当卷不支持 RWM 时使用 `Recreate`。默认值为 `RollingUpdate`。
+`logLevel`:: 为 {harbor} 服务设置日志级别。接受 `fatal`、`error`、`warn`、`info`、`debug` 或 `trace`。默认值为 `debug`。
+`enableMigratehelmHook`:: 通过 {helm} 钩子运行数据库迁移作业。当 `true` 时，将迁移作业与 `harbor-core` 分开。默认值为 `false`。
+`caSecretName`:: 指定包含 `ca.crt` 密钥的秘密名称。
+
+.代理参数
+`proxy.httpProxy`:: 指定HTTP代理服务器的URL。默认值为 `""`。
+`proxy.httpsProxy`:: 指定HTTPS代理服务器的URL。默认值为 `""`。
+`proxy.noProxy`:: 设置绕过代理配置的URL。默认值为 `127.0.0.1,localhost,.local,.internal`。
+`proxy.components`:: 设置使用代理配置的组件。默认值为 `["core","jobservice","trivy"]`。
+
+.暴露相关参数
+`expose.type`:: 指定服务暴露类型：`ingress`、`clusterIP`、`nodePort`或`loadBalancer`。默认值为 `ingress`。
+`expose.tls.enabled`:: 启用TLS。默认值为 `true`。
+`expose.tls.certSource`:: 将TLS证书源设置为`auto`、`secret`或`none`。默认值为 `auto`。
+`expose.tls.auto.commonName`:: 当类型不是`ingress`时，设置证书的通用名称。
+`expose.tls.secret.secretName`:: 指定包含`tls.crt`（证书）和`tls.key`（私钥）的秘密名称。
+`expose.ingress.hosts.core`:: 在{harbor}规则中设置{ingress}内核服务主机。默认值为 `core.harbor.domain`。
+`expose.ingress.controller`:: 设置{ingress}控制器类型。支持`default`、`gce`、`alb`、`f5-bigip`和`ncp`。默认值为 `default`。
+`expose.ingress.kubeVersionOverride`:: 为{kube}模板覆盖{ingress}版本。
+`expose.ingress.annotations`:: 设置{ingress}注释。
+`expose.ingress.labels`:: 设置{ingress}特定标签。默认值为 `{}`。
+`expose.clusterIP.name`:: 设置ClusterIP服务名称。默认值为 `harbor`。
+`expose.clusterIP.annotations`:: 设置ClusterIP服务注释。默认值为 `{}`。
+`expose.clusterIP.ports.httpPort`:: 设置HTTP服务端口。默认值为 `80`。
+`expose.clusterIP.ports.httpsPort`:: 设置 HTTPS 服务端口。默认值为 `443`。
+`expose.clusterIP.labels`:: 设置 ClusterIP 特定标签。默认值为 `{}`。
+`expose.nodePort.name`:: 设置 NodePort 服务名称。默认值为 `harbor`。
+`expose.nodePort.ports.http.port`:: 设置HTTP服务端口。默认值为 `80`。
+`expose.nodePort.ports.http.nodePort`:: 设置 HTTP 节点端口。默认值为 `30002`。
+`expose.nodePort.ports.https.port`:: 设置 HTTPS 服务端口。默认值为 `443`。
+`expose.nodePort.ports.https.nodePort`:: 设置 HTTPS 节点端口。默认值为 `30003`。
+`expose.nodePort.annotations`:: 设置 NodePort 注释。
+`expose.nodePort.labels`:: 设置 NodePort 特定标签。默认值为 `{}`。
+`expose.loadBalancer.name`:: 设置服务名称。默认值为 `harbor`。
+`expose.loadBalancer.IP`:: 在支持 IP 分配时设置 loadBalancer IP。默认值为 `""`。
+`expose.loadBalancer.ports.httpPort`:: 设置HTTP服务端口。默认值为 `80`。
+`expose.loadBalancer.ports.httpsPort`:: 设置 HTTPS 服务端口。默认值为 `30002`。
+`expose.loadBalancer.annotations`:: 设置 loadBalancer 服务注释。默认值为 `{}`。
+`expose.loadBalancer.labels`:: 设置 loadBalancer 特定标签。默认值为 `{}`。
+`expose.loadBalancer.sourceRanges`:: 指定 loadBalancerSourceRanges 的 IP 地址范围。默认值为 `[]`。
+
+[#helm-persistence-parameters]
+.持久性参数
+`persistence.enabled`:: 启用或禁用数据持久性。默认值为 `true`。
+`persistence.resourcePolicy`:: `keep` 防止在 {helm} 删除操作期间移除 PVC。空值在图表删除后删除 PVC。默认值为 `keep`。
+`persistence.persistentVolumeClaim.registry.existingClaim`:: 必须在绑定之前手动创建的现有 PVC。如果 PVC 与其他组件共享，则需要指定 subPath。
+`persistence.persistentVolumeClaim.registry.storageClass`:: 提供卷的 `storageClass`。
+`persistence.persistentVolumeClaim.registry.subPath`:: 卷中的子路径。
+`persistence.persistentVolumeClaim.registry.accessMode`:: 卷的访问模式。默认值为 `ReadWriteOnce`。
+`persistence.persistentVolumeClaim.registry.size`:: 卷的大小。默认值为 `5Gi`。
+`persistence.persistentVolumeClaim.registry.annotations`:: 卷的注释。
+`persistence.persistentVolumeClaim.jobservice.jobLog.existingClaim`:: 必须在绑定之前手动创建的现有 PVC。如果 PVC 与其他组件共享，则需要指定 subPath。
+`persistence.persistentVolumeClaim.jobservice.jobLog.storageClass`:: 提供卷的 `storageClass`。
+`persistence.persistentVolumeClaim.jobservice.jobLog.subPath`:: 卷中的子路径。
+`persistence.persistentVolumeClaim.jobservice.jobLog.accessMode`:: 卷的访问模式。默认值为 `ReadWriteOnce`。
+`persistence.persistentVolumeClaim.jobservice.jobLog.size`:: 卷的大小。默认值为 `1Gi`。
+`persistence.persistentVolumeClaim.jobservice.jobLog.annotations`:: 卷的注释。
+`persistence.persistentVolumeClaim.database.existingClaim`:: 必须在绑定之前手动创建的现有 PVC。如果 PVC 与其他组件共享，则需要指定 subPath。
+`persistence.persistentVolumeClaim.database.storageClass`:: 提供卷的 `storageClass`。
+`persistence.persistentVolumeClaim.database.subPath`:: 卷中的子路径。使用外部数据库时被忽略。
+`persistence.persistentVolumeClaim.database.accessMode`:: 卷的访问模式。使用外部数据库时被忽略。默认值为 `ReadWriteOnce`。
+`persistence.persistentVolumeClaim.database.size`:: 卷的大小。使用外部数据库时被忽略。默认值为 `1Gi`。
+`persistence.persistentVolumeClaim.database.annotations`:: 卷的注释。
+`persistence.persistentVolumeClaim.redis.existingClaim`:: 必须在绑定之前手动创建的现有 PVC。如果 PVC 与其他组件共享，则需要指定 subPath。
+`persistence.persistentVolumeClaim.redis.storageClass`:: 提供卷的 `storageClass`。如果未指定，则使用默认的 StorageClass。
+`persistence.persistentVolumeClaim.redis.subPath`:: 卷中的子路径。使用外部 {valkey} 时被忽略。
+`persistence.persistentVolumeClaim.redis.accessMode`:: 卷的访问模式。使用外部 {valkey} 时被忽略。默认值为 `ReadWriteOnce`。
+`persistence.persistentVolumeClaim.redis.size`:: 卷的大小。使用外部 {valkey} 时被忽略。默认值为 `1Gi`。
+`persistence.persistentVolumeClaim.redis.annotations`:: 卷的注释。
+`persistence.persistentVolumeClaim.trivy.existingClaim`:: 必须在绑定之前手动创建的现有 PVC。如果 PVC 与其他组件共享，则需要指定 subPath。
+`persistence.persistentVolumeClaim.trivy.storageClass`:: 提供卷的 `storageClass`。如果未指定，则使用默认的 StorageClass。
+`persistence.persistentVolumeClaim.trivy.subPath`:: 卷中的子路径。
+`persistence.persistentVolumeClaim.trivy.accessMode`:: 卷的访问模式。默认值为 `ReadWriteOnce`。
+`persistence.persistentVolumeClaim.trivy.size`:: 卷的大小。默认值为 `1Gi`。
+`persistence.persistentVolumeClaim.trivy.annotations`:: 卷的注释。
+`persistence.imageChartStorage.disableredirect`:: 控制内容后端的重定向管理。设置为 true 以禁用不支持的后端的重定向。默认值为 `false`。
+`persistence.imageChartStorage.caBundleSecretName`:: 包含自签名存储服务证书的 CA 包的秘密名称。
+`persistence.imageChartStorage.type`:: 图像和图表的存储类型：`filesystem`、`azure`、`gcs`、`s3`、`swift` 或 `oss`。默认值为 `filesystem`。
+`persistence.imageChartStorage.gcs.existingSecret`:: 包含 GCS 服务账户 JSON 密钥的现有秘密名称。密钥必须是 `gcs-key.json`。默认值为 `""`。
+`persistence.imageChartStorage.gcs.useWorkloadIdentity`:: 在 GKE 集群中启用工作负载身份使用。默认值为 `false`。
+
+.{nginx} 参数
+[options="header"]
+`nginx.image.repository`:: {nginx} 的镜像储存库。默认值为 `private-registry/harbor-nginx`。
+`nginx.image.tag`:: {nginx} 的镜像标签。
+`nginx.replicas`:: 要运行的副本数量。默认值为 `1`。
+`nginx.revisionHistoryLimit`:: 要保留的旧 `ReplicaSet` 修订版的最大数量。默认值为 `10`。
+`nginx.resources`:: 分配给容器的计算资源。默认值为 `undefined`。
+`nginx.automountServiceAccountToken`:: 控制服务账户令牌的自动挂载。默认值为 `false`。
+`nginx.nodeSelector`:: 用于 Pod 分配的节点标签。默认值为 `{}`。
+`nginx.tolerations`:: Pod 分配的容忍度。默认值为 `[]`。
+`nginx.affinity`:: 节点或 Pod 亲和性规则。默认值为 `{}`。
+`nginx.topologySpreadConstraints`:: 在故障域（如区域或可用区）中分散 Pods 的规则。默认值为 `[]`。
+`nginx.podAnnotations`:: 添加到 {nginx} Pod 的注释。默认值为 `{}`。
+
+
+.门户参数
+`portal.image.repository`:: 门户镜像的储存库位置。默认值为 `private-registry/harbor-portal`。
+`portal.image.tag`:: 门户镜像的标签。默认值为 `3.11`。
+`portal.replicas`:: 要创建的副本数量。默认值为 `1`。
+`portal.revisionHistoryLimit`:: 要保留的最大旧 `ReplicaSet` 修订版数量。默认值为 `10`。
+`portal.resources`:: 分配给容器的资源。默认值为 `undefined`。
+`portal.automountServiceAccountToken`:: 控制服务账户令牌的自动挂载。默认值为 `false`。
+`portal.nodeSelector`:: 用于 Pod 分配的节点标签。默认值为 `{}`。
+`portal.tolerations`:: 用于 Pod 分配的容忍度。默认值为 `[]`。
+`portal.affinity`:: 节点和 Pod 亲和性设置。默认值为 `{}`。
+`portal.topologySpreadConstraints`:: 定义在故障域（如区域或可用区）中 Pods 的分布。默认值为 `[]`。
+`portal.podAnnotations`:: 添加到门户 Pod 的注释。默认值为 `{}`。
+`portal.serviceAnnotations`:: 添加到门户服务的注释。默认值为 `{}`。
+`portal.priorityClassName`:: Pod 执行的优先级类名称。
+`portal.initContainers`:: 在控制器容器启动之前运行的初始化容器。默认值为 `[]`。
+
+
+.内核参数
+`core.image.repository`:: {harbor}内核镜像的储存库。默认值为 `private-registry/harbor-core`。
+`core.image.tag`:: {harbor}内核镜像的标签。默认值为 `2.11`。
+`core.replicas`:: 副本数量。默认值为 `1`。
+`core.revisionHistoryLimit`:: 修订历史限制。默认值为 `10`。
+`core.startupProbe.initialDelaySeconds`:: 启动探针的初始延迟（秒）。默认值为 `10`。
+`core.resources`:: 为容器分配的资源。默认值为 `undefined`。
+`core.automountServiceAccountToken`:: 挂载服务账户令牌。默认值为 `false`。
+`core.nodeSelector`:: 用于 Pod 分配的节点标签。默认值为 `{}`。
+`core.tolerations`:: 用于 Pod 分配的容忍度。默认值为 `[]`。
+`core.affinity`:: 节点或 Pod 亲和性。默认值为 `{}`。
+`core.topologySpreadConstraints`:: 定义 Pods 如何在故障域（如区域或可用区）之间分布的约束。默认值为 `[]`。
+`core.podAnnotations`:: 要添加到内核 Pod 的注释。默认值为 `{}`。
+`core.serviceAnnotations`:: 要添加到内核服务的注释。默认值为 `{}`。
+`core.configureUserSettings`:: 环境变量 CONFIG_OVERWRITE_JSON 中的 JSON 字符串，用于配置用户设置。
+`core.quotaUpdateProvider`:: 用于更新项目配额使用情况的提供者，选项为 `redis` 或 `db`。默认值为 `db`。
+`core.secret`:: 当核心服务器与其他组件通信时使用。
+`core.secretName`:: 用于使用您自己的 TLS 证书和私钥进行词元加密或解密的 {kube} 密钥的名称。
+`core.tokenKey`:: 用于签署服务词元的 PEM 格式 RSA 私钥。
+`core.tokenCert`:: 由 `core.tokenKey` 签署的 PEM 格式证书，用于验证服务词元。
+`core.xsrfKey`:: XSRF 密钥，如果未指定则自动生成。
+`core.priorityClassName`:: 运行该 Pod 的优先级类。
+`core.artifactPullAsyncFlushDuration`:: 异步更新工件拉取时间和储存库拉取计数的持续时间。
+`core.gdpr.deleteUser`:: 启用符合 GDPR 的用户删除。默认值为 `false`。
+`core.gdpr.auditLogsCompliant`:: 通过将用户名更改为其 CRC32 值来启用审计日志的 GDPR 合规性，如果该用户已从系统中删除。默认值为 `false`。
+`core.initContainers`:: 在控制器的容器启动之前运行的初始化容器。默认值为 `[]`。
+
+
+.作业服务参数
+`jobservice.image.repository`:: 作业服务镜像的储存库。默认值为 `private-registry/harbor-jobservice`。
+`jobservice.image.tag`:: 作业服务镜像的标签。默认值为 `2.11`。
+`jobservice.replicas`:: 副本数量。默认值为 `1`。
+`jobservice.revisionHistoryLimit`:: 修订历史限制。默认值为 `10`。
+`jobservice.maxJobWorkers`:: 作业工作器的最大数量。默认值为 `10`。
+`jobservice.jobLoggers`:: 作业的记录器：`file`、`database` 或 `stdout`。默认值为 `[file]`。
+`jobservice.loggerSweeperDuration`:: 保留作业日志的天数（如果 `jobLoggers` 设置为 `stdout` 则忽略）。默认值为 `14`。
+`jobservice.notification.webhook_job_max_retry`:: Webhook 通知发送的最大重试次数。默认值为 `3`。
+`jobservice.notification.webhook_job_http_client_timeout`:: Webhook 通知发送的 HTTP 客户端超时时间（以秒为单位）。默认值为 `3`。
+`jobservice.reaper.max_update_hours`:: 等待任务完成的最长时间（以小时为单位）。如果任务在指定的小时后未完成，则标记为错误，但继续运行。默认值为 `24`。
+`jobservice.reaper.max_dangling_hours`:: 在运行状态下执行的最长时间（以小时为单位），而不创建新任务。默认值为 `168`。
+`jobservice.resources`:: 为容器分配的 [资源]。默认值为 `undefined`。
+`jobservice.automountServiceAccountToken`:: 挂载服务账户词元。默认值为 `false`。
+`jobservice.nodeSelector`:: 用于 Pod 分配的节点标签。默认值为 `{}`。
+`jobservice.tolerations`:: 用于 Pod 分配的容忍度。默认值为 `[]`。
+`jobservice.affinity`:: 节点或 Pod 亲和性。默认值为 `{}`。
+`jobservice.topologySpreadConstraints`:: 定义 Pods 如何在故障域（如区域或可用区）之间分布的约束。默认值为 `[]`。
+`jobservice.podAnnotations`:: 要添加到作业服务 Pod 的注释。默认值为 `{}`。
+`jobservice.priorityClassName`:: 运行该 Pod 的优先级类。
+`jobservice.secret`:: 作业服务与其他组件通信时使用的密钥。如果未指定密钥，{helm} 将生成它。必须是16个字符的字符串。
+`jobservice.initContainers`:: 在控制器的容器启动之前运行的初始化容器。默认值为 `[]`。
+
+
+.注册表参数
+`registry.registry.image.repository`:: 注册表镜像的储存库位置。默认值为 `private-registry/harbor-registry`。
+`registry.registry.image.tag`:: 注册表镜像的标签。默认值为 `2.11`。
+`registry.registry.resources`:: 为容器分配的 [资源]。默认值为 `undefined`。
+`registry.controller.image.repository`:: 注册表控制器镜像的储存库位置。默认值为 `private-registry/harbor-registryctl`。
+`registry.controller.image.tag`:: 注册表控制器镜像的标签。默认值为 `2.11`。
+`registry.controller.resources`:: 为容器分配的 [资源]。默认值为 `undefined`。
+`registry.replicas`:: 副本实例的数量。默认值为 `1`。
+`registry.revisionHistoryLimit`:: 历史中要维护的最大修订版本数量。默认值为 `10`。
+`registry.nodeSelector`:: 用于 Pod 分配的节点标签。默认值为 `{}`。
+`registry.automountServiceAccountToken`:: 控制是否挂载服务账户词元。默认值为 `false`。
+`registry.tolerations`:: 用于 Pod 分配的容忍度。默认值为 `[]`。
+`registry.affinity`:: 节点或 Pod 亲和性。默认值为 `{}`。
+`registry.topologySpreadConstraints`:: 定义跨故障域（如区域或可用区）进行 pod 分布的约束。默认值为 `[]`。
+`registry.middleware`:: 在后端存储和 {docker} 拉取接收者之间的 CDN 中间件支持。
+`registry.podAnnotations`:: 要添加到注册表 pod 的注释。默认值为 `{}`。
+`registry.priorityClassName`:: pod 执行的优先级类。
+`registry.secret`:: 在客户端和注册表存储后端之间保护上传状态的密钥。
+`registry.credentials.username`:: {harbor} 核心的内部注册表访问用户名。默认值为 `harbor_registry_user`。
+`registry.credentials.password`:: {harbor} 核心的内部注册表访问密码。默认值为 `harbor_registry_password`。
+`registry.credentials.existingSecret`:: 包含 htpasswd 认证模式下注册表实例访问密码的现有密钥。默认值为 `""`。
+`registry.credentials.htpasswdString`:: htpasswd 字符串格式的登录名和密码。排除 `registry.credentials.username` 和 `registry.credentials.password`。默认值为 `undefined`。
+`registry.relativeurls`:: 当为真时，在 Location 头中返回相对 URL。如果 {harbor} 在反向代理后面，则为必需。默认值为 `false`。
+`registry.upload_purging.enabled`:: 启用清除上传目录。默认值为 `true`。
+`registry.upload_purging.age`:: 上传目录中文件被删除的时间段，默认是一周。默认值为 `168h`。
+`registry.upload_purging.interval`:: 清除操作之间的时间间隔。默认值为 `24h`。
+`registry.upload_purging.dryrun`:: 启用上传清除的干运行模式。默认值为 `false`。
+`registry.initContainers`:: 在控制器的容器启动之前运行的初始化容器。默认值为 `[]`。
+
+
+.{trivy} 参数
+`trivy.enabled`:: 启用或禁用 {trivy} 扫描器。默认值为 `true`。
+`trivy.image.repository`:: {trivy} 适配器镜像的储存库。默认值为 `private-registry/harbor-trivy-adapter`。
+`trivy.image.tag`:: {trivy} 适配器镜像的标签。默认值为 `2.11`。
+`trivy.resources`:: 为 {trivy} 适配器容器分配的资源。默认值为 `undefined`。
+`trivy.automountServiceAccountToken`:: 是否挂载服务账户词元。默认值为 `false`。
+`trivy.replicas`:: Pod 副本的数量。默认值为 `1`。
+`trivy.debugMode`:: 启用 {trivy} 调试模式以进行故障排除。默认值为 `false`。
+`trivy.vulnType`:: 以逗号分隔的漏洞类型列表（`os` 和 `library`）。默认值为 `os,library`。
+`trivy.severity`:: 以逗号分隔的漏洞严重性列表以进行检查。默认值为 `UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`。
+`trivy.ignoreUnfixed`:: 仅显示已修复的漏洞。默认值为 `false`。
+`trivy.insecure`:: 跳过注册表证书验证。默认值为 `false`。
+`trivy.skipUpdate`:: 禁用从 GitHub 下载 {trivy} 数据库。默认值为 `false`。
+`trivy.skipJavaDBUpdate`:: 启用时需要手动下载 `trivy-java.db` 文件。默认值为 `false`。
+`trivy.offlineScan`:: 防止 {trivy} 发送 API 请求以识别依赖项。默认值为 `false`。
+`trivy.securityCheck`:: 逗号分隔的安全问题列表。默认值为 `vuln`。
+`trivy.timeout`:: 等待扫描完成的持续时间。默认值为 `5m0s`。
+`trivy.gitHubToken`:: 下载数据库所需的 GitHub 访问词元。默认值为 `undefined`。
+`trivy.priorityClassName`:: 运行 pod 的优先级类别。默认值为 `undefined`。
+`trivy.topologySpreadConstraints`:: 定义跨故障域的 pod 分配约束。默认值为 `undefined`。
+`trivy.initContainers`:: 在主容器启动之前运行的初始化容器列表。默认值为 `[]`。
+
+.数据库参数
+`database.type`:: 数据库类型。使用外部数据库时设置为 `external`。默认值为 `internal`。
+`database.internal.image.repository`:: 数据库镜像的储存库。默认值为 `private-registry/harbor-db`。
+`database.internal.image.tag`:: 数据库镜像的标签。默认值为 `2.11`。
+`database.internal.password`:: 内部数据库的密码。默认值为 `changeit`。
+`database.internal.shmSizeLimit`:: {postgresql} 的共享内存大小限制（通常为容器内存限制的 50%）。默认值为 `512Mi`。
+`database.internal.resources`:: 分配给数据库容器的资源。默认值为 `undefined`。
+`database.internal.automountServiceAccountToken`:: 控制服务账户词元是否被挂载。默认值为 `false`。
+`database.internal.initContainer.migrator.resources`:: 分配给数据库迁移初始化容器的资源。默认值为 `undefined`。
+`database.internal.initContainer.permissions.resources`:: 分配给数据库权限初始化容器的资源。默认值为 `undefined`。
+`database.internal.nodeSelector`:: 用于 Pod 分配的节点标签。默认值为 `{}`。
+`database.internal.tolerations`:: 用于 Pod 分配的容忍度。默认值为 `[]`。
+`database.internal.affinity`:: 节点或 pod 亲和性设置。默认值为 `{}`。
+`database.internal.priorityClassName`:: 运行 pod 的优先级类别。默认值为 `undefined`。
+`database.internal.livenessProbe.timeoutSeconds`:: 活跃性探针的超时时间（秒）：1-5 秒。默认值为 `1`。
+`database.internal.readinessProbe.timeoutSeconds`:: 就绪探针的超时时间（秒）（范围：1-5 秒。默认值为 `1`。
+`database.internal.extrInitContainers`:: 在数据库容器启动之前运行的附加初始化容器。默认值为 `[]`。
+`database.external.host`:: 外部数据库的主机名。默认值为 `192.168.0.1`。
+`database.external.port`:: 外部数据库的端口号。默认值为 `5432`。
+`database.external.username`:: 外部数据库的用户名。默认值为 `user`。
+`database.external.password`:: 外部数据库的密码。默认值为 `password`。
+`database.external.coreDatabase`:: 核心服务使用的数据库名称。默认值为 `registry`。
+`database.external.existingSecret`:: 包含数据库密码的现有密钥。密钥必须是 `password`。默认值为 `""`。
+`database.external.sslmode`:: 外部数据库的连接方式。选项：`require`，`verify-full`，`verify-ca`，`disable`。默认值为 `disable`。
+`database.maxIdleConns`:: 连接池中空闲连接的最大数量（0或更少表示不保留空闲连接）。默认值为 `50`。
+`database.maxOpenConns`:: 数据库的最大打开连接数（0或更少表示无限制）。默认值为 `100`。
+`database.podAnnotations`:: 要添加到数据库 Pod 的注释。默认值为 `{}`。
+
+
+.{valkey} / {redis} 参数
+`redis.type`:: {redis} 部署类型。设置为 `external` 以用于外部 {redis}。默认值为 `internal`。
+`redis.internal.image.repository`:: {redis} 镜像的储存库。默认值为 `private-registry/harbor-redis`。
+`redis.internal.image.tag`:: {redis} 镜像的标签。默认值为 `7.2`。
+`redis.internal.resources`:: 为 {redis} 容器分配的资源。默认值为 `undefined`。
+`redis.internal.automountServiceAccountToken`:: 控制服务账户词元是否被挂载。默认值为 `false`。
+`redis.internal.nodeSelector`:: 用于 Pod 分配的节点标签。默认值为 `{}`。
+`redis.internal.tolerations`:: 用于 Pod 分配的容忍度。默认值为 `[]`。
+`redis.internal.affinity`:: 节点或 pod 亲和性设置。默认值为 `{}`。
+`redis.internal.priorityClassName`:: 运行{redis} pod的优先级类。默认值为 `undefined`。
+`redis.internal.jobserviceDatabaseIndex`:: jobservice的数据库索引。默认值为 `1`。
+`redis.internal.registryDatabaseIndex`:: registry的数据库索引。默认值为 `2`。
+`redis.internal.trivyAdapterIndex`:: {trivy}适配器的数据库索引。默认值为 `5`。
+`redis.internal.harborDatabaseIndex`:: 杂项{harbor}业务逻辑的数据库索引。默认值为 `0`。
+`redis.internal.cacheLayerDatabaseIndex`:: {harbor}的缓存层的数据库索引。默认值为 `0`。
+`redis.internal.initContainers`:: 在{redis}容器启动之前运行的初始化容器。默认值为 `[]`。
+`redis.external.addr`:: 外部{redis}实例的地址。默认值为 `192.168.0.2:6379`。
+`redis.external.sentinelMasterSet`:: {redis} Sentinel主集的名称（如适用）。默认值为 `undefined`。
+`redis.external.coreDatabaseIndex`:: 内核的数据库索引。默认值为 `0`。
+`redis.external.jobserviceDatabaseIndex`:: jobservice的数据库索引。默认值为 `1`。
+`redis.external.registryDatabaseIndex`:: registry的数据库索引。默认值为 `2`。
+`redis.external.trivyAdapterIndex`:: {trivy}适配器的数据库索引。默认值为 `5`。
+`redis.external.harborDatabaseIndex`:: 杂项{harbor}业务逻辑的数据库索引。默认值为 `0`。
+`redis.external.cacheLayerDatabaseIndex`:: {harbor}的缓存层的数据库索引。默认值为 `0`。
+`redis.external.username`:: 外部{redis}身份验证的用户名。默认值为 `undefined`。
+`redis.external.password`:: 外部{redis}身份验证的密码。默认值为 `undefined`。
+`redis.external.existingSecret`:: 包含{redis}密码的现有密钥。密钥必须是`REDIS_PASSWORD`。默认值为 `""`。
+`redis.podAnnotations`:: 要添加到{redis} pod的注释。默认值为 `{}`。
+
+.导出器参数。
+`exporter.replicas`:: 要运行的副本数量。默认值为 `1`。
+`exporter.revisionHistoryLimit`:: 修订历史限制。默认值为 `10`。
+`exporter.podAnnotations`:: 要添加到导出器pod的注释。默认值为 `{}`。
+`exporter.image.repository`:: 导出器镜像的储存库。默认值为 `private-registry/harbor-exporter`。
+`exporter.image.tag`:: 导出器镜像的标签。默认值为 `2.11`。
+`exporter.nodeSelector`:: 用于 Pod 分配的节点标签。默认值为 `{}`。
+`exporter.tolerations`:: 用于 Pod 分配的容忍度。默认值为 `[]`。
+`exporter.affinity`:: 节点或 Pod 亲和性。默认值为 `{}`。
+`exporter.topologySpreadConstraints`:: 定义 Pods 如何在故障域（如区域或可用区）之间分布的约束。默认值为 `[]`。
+`exporter.automountServiceAccountToken`:: 控制是否挂载 serviceAccountToken。默认值为 `false`。
+`exporter.cacheDuration`:: 导出器收集的信息的缓存持续时间。默认值为 `30`。
+`exporter.cacheCleanInterval`:: 导出器收集的信息的缓存清理间隔。默认值为 `14400`。
+`exporter.priorityClassName`:: 运行 Pod 的优先级类。默认值为 `undefined`。
+
+.指标参数。
+`metrics.enabled`:: 启用 {harbor} 指标。默认值为 `false`。
+`metrics.core.path`:: 核心指标的 URL 路径。默认值为 `/metrics`。
+`metrics.core.port`:: 核心指标的端口。默认值为 `8001`。
+`metrics.registry.path`:: 注册表指标的 URL 路径。默认值为 `/metrics`。
+`metrics.registry.port`:: 注册表指标的端口。默认值为 `8001`。
+`metrics.exporter.path`:: 导出器指标的 URL 路径。默认值为 `/metrics`。
+`metrics.exporter.port`:: 导出器指标的端口。默认值为 `8001`。
+`metrics.serviceMonitor.enabled`:: 启用创建 {prometheus} ServiceMonitor（需要 {prometheus} 个 CRD）。默认值为 `false`。
+`metrics.serviceMonitor.additionalLabels`:: 要应用于 ServiceMonitor 清单的附加标签。默认值为 `""`。
+`metrics.serviceMonitor.interval`:: {harbor} 指标的抓取间隔。默认值为 `""`。
+`metrics.serviceMonitor.metricRelabelings`:: 指标在摄取前的重标记规则。默认值为 `[]`。
+`metrics.serviceMonitor.relabelings`:: 指标在抓取前的重标记规则。默认值为 `[]`。
+
+.跟踪参数
+`trace.enabled`:: 启用跟踪功能。默认值为 `false`。
+`trace.provider`:: 跟踪提供者（`jaeger` 或 `otel`）。Jaeger 版本应为 1.26 及以上。默认值为 `jaeger`。
+`trace.sample_rate`:: 跟踪数据的采样率。`1` 采样 100%，`0.5` 采样 50%。默认值为 `1`。
+`trace.namespace`:: 用于区分不同 {harbor} 服务的名称空间。
+`trace.attributes`:: 用于跟踪提供者初始化的用户定义属性的键值字典。
+`trace.jaeger.endpoint`:: Jaeger 跟踪的端点。默认值为 `\http://hostname:14268/api/traces`。
+`trace.jaeger.username`:: Jaeger 认证的用户名。
+`trace.jaeger.password`:: Jaeger 认证的密码。
+`trace.jaeger.agent_host`:: Jaeger 的代理主机。
+`trace.jaeger.agent_port`:: Jaeger 的代理端口。默认值为 `6831`。
+`trace.otel.endpoint`:: {otelemetry} 跟踪的端点。默认值为 `hostname:4318`。
+`trace.otel.url_path`:: {otelemetry} 的 URL 路径。默认值为 `/v1/traces`。
+`trace.otel.compression`:: 为 {otelemetry} 启用压缩。默认值为 `false`。
+`trace.otel.insecure`:: 为 {otelemetry} 建立不安全的连接。默认值为 `true`。
+`trace.otel.timeout`:: {otelemetry} 的超时时间（秒）。默认值为 `10`。
+
+.缓存参数
+`cache.enabled`:: 启用缓存层。默认值为 `false`。
+`cache.expireHours`:: 缓存层的过期时间，单位为小时。默认值为 `24`。

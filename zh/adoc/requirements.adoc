@@ -1,0 +1,47 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-requirements]
+== 要求
+
+:revdate: 2026-06-05
+:page-revdate: {revdate}
+
+
+本节描述了 {productname} 的最低平台前提条件和推荐的生产规模。
+
+[#pr-deployment-prerequisites]
+=== 先决条件
+* {kube} 集群版本 1.20 或更高版本。
+* {helm} 版本 3.2.0 或更高版本。
+* 您的基础设施中对持久卷 (PV) 提供者的支持。
+* {productname} 的有效订阅。
+
+[#pr-deployment-hardware-sizing]
+=== 硬件和规模建议。
+将这些值作为生产的起始点。根据保留策略、镜像更换、扫描并发和复制流量进行调整。 +
+==== 集群基线
+
+[cols="1,1",options="header"]
+|===
+| 范围 | 推荐的起始点。
+| 工作节点 | 至少 3 个工作节点。
+| 节点形状。 | 每个节点至少 4 个 vCPU 和 16 GiB RAM。
+| 首选节点形状。 | 每个节点 8 个 vCPU 和 32 GiB RAM，以提高扫描和推送并发性。
+|===
+
+这些建议与 Rancher 对 RKE2 Kubernetes 的指导一致。
+有关详细信息，请参见 https://ranchermanager.docs.rancher.com/getting-started/installation-and-upgrade/installation-requirements#rke2-kubernetes[RKE2 Kubernetes 安装要求]。
+
+==== 持久存储基线。
+
+[cols="1,1,1",options="header"]
+|===
+| 组件 | 默认图表大小。 | 推荐的起始大小。
+| 注册表数据。 | 5 Gi | 500 Gi 到 1 Ti。
+| Trivy 缓存和数据库。 | 5 Gi | 20 Gi 到 50 Gi。
+| 作业服务日志。 | 1 Gi。 | 10 Gi
+| 内部 PostgreSQL（如果使用）。 | 1 Gi。 | 最少 20 Gi。
+| 内部 Valkey（如果使用）。 | 1 Gi。 | 最少 20 Gi。
+|===
+
+图表默认值以安装为导向，不应作为长期生产能力值使用。

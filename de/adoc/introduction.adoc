@@ -1,0 +1,55 @@
+include::../common/generic-attributes.adoc[]
+
+[#pr-introduction]
+== Einführung
+:revdate: 2025-09-01
+:page-revdate: {revdate}
+
+[#pr-what-is-spr]
+=== Was ist {productname}?
+{productname} ({productnameshort}) ist eine lokale Container-Registry.
+{productnameshort} ist für {suse} Kunden konzipiert, die eine Container-Registry benötigen, die gut mit anderen {suse} Diensten und Produkten zusammenarbeitet.
+
+[#pr-what-are-pr-benefits]
+=== Was sind die Vorteile von {productname}?
+{productnameshort} basiert auf dem {harbor} Projekt und umfasst alle seine Kernfunktionen sowie zusätzliche Vorteile. Beispiel:
+
+* *Lokale Container-Registry.* {productnameshort} ist eine lokal gehostete Container-Registry mit Zugriff auf Online-{suse} Registry-Dienste.
+* *Sicherheit.* {productnameshort} bietet Sicherheitsüberlegungen für containerisierte Umgebungen.
+Es umfasst Authentifizierung, Autorisierung und Schwachstellenscanning.
+* *Implementierungsflexibilität.* Sie können {productnameshort} in einer {kube} Umgebung wie {rke2} installieren.
+Sie können {productnameshort} auch mit einem Setup für hohe Verfügbarkeit bereitstellen.
+* *Benutzermanagement.* {productnameshort} bietet Authentifizierungs- und Autorisierungsmechanismen mit rollenbasierter Zugriffskontrolle (RBAC).
+* *Benutzeroberfläche.* Neben einer Befehlszeilenschnittstelle können Sie {productnameshort} über die Web-Benutzeroberfläche verwalten.
+
+[#pr-how-does-pr-work]
+=== Wie funktioniert {productname}?
+{productnameshort} wird als _Open Container Initiative_ (OCI) Container bereitgestellt und soll auf einem {kube} Cluster bereitgestellt werden.
+{productnameshort} besteht aus den folgenden Containern:
+
+* **harbor-core:** die Hauptkomponente der {harbor} Registry, verantwortlich für die Verwaltung von Kernfunktionen wie das Verwalten von Projekten, Repositories und Benutzerinteraktionen.
+* **harbor-db:** der Datenbankcontainer, der alle Metadaten zu Bildern, Benutzern und Konfigurationen für die {harbor} Registry speichert.
+* **harbor-jobservice:** ein Dienst, der Hintergrundjobs verwaltet, wie z.B. Bildreplikation und geplante Aufgaben, um eine effiziente Verarbeitung von Operationen innerhalb der Registry sicherzustellen.
+* **harbor-nginx:** der Reverse-Proxy und Lastenausgleich, der eingehende Anfragen an die entsprechenden {harbor} Dienste weiterleitet und einen einzigen Einstiegspunkt für Benutzer bietet.
+* **harbor-portal:** die webbasierte Benutzeroberfläche, die es Benutzern ermöglicht, mit der {harbor} Registry zu interagieren, Bilder zu verwalten und Einstellungen über eine grafische Oberfläche zu konfigurieren.
+* **harbor-registry:** der Container, der als tatsächliches Backend für die Speicherung von Containerbildern dient und die Speicherung sowie den Abruf verwaltet.
+* **harbor-registryctl:** ein Kommandozeilenwerkzeug zur Verwaltung der {harbor} Registry, das es Benutzern ermöglicht, administrative Aufgaben und Konfigurationen direkt über das Terminal durchzuführen.
+* **harbor-trivy-adapter:** ein Container, der den {trivy} Schwachstellenscanner mit {harbor} integriert und automatisierte Sicherheitsprüfungen von Containerbildern auf Schwachstellen ermöglicht.
+* **harbor-exporter:** der Container, der {harbor} Metriken in einem Format exportiert, das von {prometheus} für Überwachung und Einblick gesammelt werden kann.
+* **harbor-valkey:** ein In-Memory-Schlüssel-Wert-Speicher.
+
+Nach der Implementierung können Sie sich über die Web-Benutzeroberfläche anmelden.
+Nach erfolgreicher Authentifizierung und Autorisierung können Sie mehrere Aspekte des Produkts konfigurieren, zum Beispiel:
+
+* Konfigurieren Sie *global settings*, wie das Festlegen der Registry auf den Nur-Lesen-Modus oder das Einschränken, wer Projekte erstellen kann.
+* Wählen Sie eine *Authentifizierung* Methode aus.
+* Fügen Sie Benutzer im Datenbank-Authentifizierungsmodus hinzu und weisen Sie anderen Benutzern die *Administrator*-Rolle zu.
+* Wenden Sie Ressourcen-*Quoten* auf Projekte an.
+* Richten Sie die *Replikation* von Containerbildern zwischen {productnameshort} Instanzen ein.
+
+[#pr-for-more-information]
+=== Weitere Informationen
+Verweisen Sie auf die folgenden Quellen, um weitere Details zu erhalten:
+
+* Die {harbor} Projekt-Homepage befindet sich unter https://goharbor.io/.
+* Die {harbor} Nutzung ist in https://goharbor.io/docs. detailliert.

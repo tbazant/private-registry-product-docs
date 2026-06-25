@@ -39,6 +39,9 @@ include::install-using-rancher.adoc[]
 // Deployment
 include::install-using-cmdline.adoc[]
 
+// Installation in air-gap environment
+include::install-airgap-environment.adoc[]
+
 // Deployment HA
 include::ha-setup.adoc[]
 

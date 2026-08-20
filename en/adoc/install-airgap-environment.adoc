@@ -19,7 +19,7 @@ For more information, refer to the https://docs.hauler.dev/docs/intro[Hauler doc
 
 Before beginning the air-gapped installation process, ensure you have the following in place:
 
-* *Hauler CLI:* Install Hauler on your source machine (connected to the internet). Visit the https://docs.hauler.dev/docs/getting-started[Hauler Getting Started guide] for installation instructions.
+* *Hauler CLI:* Install Hauler on your source machine (connected to the Internet) and air-gapped system. Visit the https://docs.hauler.dev/docs/getting-started/install[Hauler Installation Guide] for installation instructions.
 * *{helm} 3.x or later:* Required for managing {helm} charts and authentication with registries.
 * *kubectl:* Needed for deploying to your {kube} cluster.
 * *{docker} or container runtime:* Required to handle OCI image operations (optional if using Hauler in stand-alone mode).
@@ -131,7 +131,7 @@ The Hauler store is a local directory that acts as an intermediate storage for a
 {prompt_user}helm registry login registry.suse.com -u <YOUR_USERNAME> -p <YOUR_PASSWORD> <.>
 
 # Configure Hauler with the same credentials
-{prompt_user}head -1 ./password.txt | helm registry login registry.suse.com -u <YOUR_USERNAME> --password-stdin
+{prompt_user}head -1 ./password.txt | hauler login registry.suse.com -u <YOUR_USERNAME> --password-stdin
 
 # or
 # hauler login registry.suse.com -u <YOUR_USERNAME> -p <YOUR_PASSWORD>

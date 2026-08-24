@@ -186,7 +186,7 @@ The `hauler store save` command creates a compressed tarball containing all coll
   -u <REGISTRY_USERNAME> \
   -p <REGISTRY_PASSWORD> <.>
 ----
-<.> Replace `<SUSE_PRIVATE_REGISTRY_URL>` with your {productname} URL (e.g., `https://registry.example.com`)
+<.> Replace `<SUSE_PRIVATE_REGISTRY_URL>` with your {productname} URL (e.g., `\https://registry.example.com`)
 <.> Replace `<REGISTRY_USERNAME>` and `<REGISTRY_PASSWORD>` with your {productname} credentials
 
 . Alternatively, use Hauler's ephemeral local registry for immediate deployment:
